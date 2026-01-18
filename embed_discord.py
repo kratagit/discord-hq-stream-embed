@@ -1,15 +1,22 @@
 import win32gui
 import win32con
+import win32api
 import subprocess
 import time
 import keyboard
 import sys
 import threading
+import ctypes
+from PIL import Image, ImageDraw
+import pystray
+import os
 
 # ================= KONFIGURACJA =================
 MPV_EXE = r"C:\Users\Krata\Home\Programy\mpv-x86_64-v3-20251228-git-a58dd8a\mpv.exe"
 WINDOW_TITLE = "MOJ_STREAM" 
-HOTKEY = "f7+f8"           
+
+# Skrót do chowania obrazu
+HOTKEY_TOGGLE_STREAM = "f7+f8"   
 
 # --- ODSTĘPY (Marginesy) ---
 OFFSET_X = 325
@@ -17,7 +24,7 @@ OFFSET_Y = 38
 MARGIN_RIGHT = 8
 MARGIN_BOTTOM = 66
 
-TRYB_TESTOWY = True
+TRYB_TESTOWY = False
 # ================================================
 
 CMD = [
@@ -32,9 +39,7 @@ CMD = [
     "--force-window=immediate",
     "--idle=yes",
     "--keep-open=yes",
-    
-    "--no-osc",  # To wyłącza interfejs graficzny (pasek sterowania)
-
+    "--no-osc",
     "--input-conf=input.conf",
     "--script=scripts/latency.lua"
 ]
@@ -46,12 +51,109 @@ else:
     SOURCE = "srt://0.0.0.0:10000?mode=listener&latency=50000"
     CMD.append(SOURCE)
 
+# Zmienne globalne
 mpv_hwnd = None
 discord_hwnd = None
 visible = True
+console_visible = True
+restart_requested = False
+quit_requested = False
 
 def log(msg):
-    print(f"[LOG] {msg}")
+    try:
+        print(f"[LOG] {msg}")
+    except OSError:
+        pass 
+
+def get_console_window():
+    return ctypes.windll.kernel32.GetConsoleWindow()
+
+def disable_close_button():
+    """Wyłącza przycisk X, ale po cichu (bez błędów)"""
+    try:
+        hwnd = get_console_window()
+        if hwnd:
+            hMenu = win32gui.GetSystemMenu(hwnd, False)
+            if hMenu:
+                # Próbujemy usunąć przycisk. Jak się nie uda (bo już go nie ma), to trudno.
+                win32gui.DeleteMenu(hMenu, win32con.SC_CLOSE, win32con.MF_BYCOMMAND)
+                win32gui.DrawMenuBar(hwnd)
+    except Exception:
+        pass # Ignorujemy błędy, żeby nie psuć działania programu
+
+def toggle_console(icon=None, item=None):
+    """Inteligentne zarządzanie konsolą"""
+    global console_visible
+    hwnd = get_console_window()
+    
+    # CASE 1: Konsola nie istnieje - tworzymy nową
+    if not hwnd or hwnd == 0:
+        try:
+            ctypes.windll.kernel32.AllocConsole()
+            sys.stdout = open("CONOUT$", "w")
+            sys.stderr = open("CONOUT$", "w")
+            ctypes.windll.kernel32.SetConsoleTitleW("Logi Discord Stream")
+            
+            disable_close_button()
+            
+            hwnd = get_console_window()
+            try:
+                win32gui.SetWindowPos(hwnd, win32con.HWND_TOP, 100, 100, 900, 600, 0x0040)
+            except Exception:
+                pass
+            console_visible = True
+            log("Konsola odtworzona.")
+        except Exception:
+            pass
+        return
+
+    # CASE 2: Konsola istnieje - przełączamy widoczność
+    try:
+        if console_visible:
+            # Ukrywanie
+            win32gui.ShowWindow(hwnd, win32con.SW_HIDE)
+            console_visible = False
+        else:
+            # Pokazywanie
+            win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+            
+            # Próba blokady X (cicha)
+            disable_close_button()
+            
+            try:
+                win32gui.SetWindowPos(hwnd, win32con.HWND_TOP, 100, 100, 900, 600, 0x0040)
+                win32gui.SetForegroundWindow(hwnd)
+            except Exception:
+                pass 
+                
+            console_visible = True
+            
+    except Exception as e:
+        log(f"Blad przelaczania okna: {e}")
+
+def trigger_restart(icon=None, item=None):
+    global restart_requested
+    log("!!! ZAZADANO RESTARTU Z MENU !!!")
+    restart_requested = True
+    if not console_visible or not get_console_window():
+        toggle_console()
+
+def trigger_quit(icon=None, item=None):
+    global quit_requested
+    log("!!! KONCZENIE PRACY !!!")
+    quit_requested = True
+    if icon:
+        icon.stop()
+
+def create_tray_icon():
+    width = 64
+    height = 64
+    color1 = (88, 101, 242)
+    color2 = (255, 255, 255)
+    image = Image.new('RGB', (width, height), color1)
+    dc = ImageDraw.Draw(image)
+    dc.rectangle((width // 4, height // 4, width * 3 // 4, height * 3 // 4), fill=color2)
+    return image
 
 def kill_old_mpv():
     subprocess.run(f"taskkill /F /FI \"WINDOWTITLE eq {WINDOW_TITLE}\"", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -80,24 +182,36 @@ def toggle_hide():
         visible = True
 
 def monitor_mpv_output(proc):
-    for line in iter(proc.stdout.readline, b''):
-        msg = line.decode('utf-8', errors='ignore').strip()
-        if "input.conf" not in msg:
-            print(f"[MPV] {msg}")
-    proc.stdout.close()
+    try:
+        for line in iter(proc.stdout.readline, b''):
+            if not line: break
+            msg = line.decode('utf-8', errors='ignore').strip()
+            if "input.conf" not in msg:
+                try:
+                    print(f"[MPV] {msg}")
+                except:
+                    pass
+    except Exception:
+        pass
+    finally:
+        proc.stdout.close()
 
-def main():
-    global mpv_hwnd, discord_hwnd
+def run_stream_cycle():
+    global mpv_hwnd, discord_hwnd, restart_requested
     
-    log("Startuje...")
+    restart_requested = False
+    mpv_hwnd = None
+    
+    log("=== START CYKLU ===")
     kill_old_mpv()
     time.sleep(0.5)
 
     log("Szukam Discorda...")
     discord_hwnd = find_discord()
     if not discord_hwnd:
-        log("BLAD: Nie znaleziono Discorda.")
-        return
+        log("BLAD: Nie znaleziono Discorda. Czekam 5 sekund...")
+        time.sleep(5)
+        return 
 
     log(f"Discord ID: {discord_hwnd}. Start MPV...")
     
@@ -105,6 +219,7 @@ def main():
         mpv_process = subprocess.Popen(CMD, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     except FileNotFoundError:
         log("BLAD: Brak pliku mpv.exe!")
+        time.sleep(5)
         return
 
     t = threading.Thread(target=monitor_mpv_output, args=(mpv_process,))
@@ -125,40 +240,51 @@ def main():
         mpv_process.terminate()
         return
 
-    log("Ustawiam Wlasciciela (Sticky Window)...")
+    log("Ustawiam Wlasciciela...")
     try:
         win32gui.SetWindowLong(mpv_hwnd, win32con.GWL_HWNDPARENT, discord_hwnd)
     except Exception as e:
         log(f"Blad przy SetWindowLong: {e}")
     
-    keyboard.add_hotkey(HOTKEY, toggle_hide)
-    log("Gotowe. Rozmiar okna bedzie dynamiczny.")
+    log("Gotowe. Stream dziala.")
 
-    try:
-        while mpv_process.poll() is None:
-            if not win32gui.IsWindow(discord_hwnd):
-                break
-            
-            if win32gui.IsIconic(discord_hwnd):
-                if win32gui.IsWindowVisible(mpv_hwnd):
-                    win32gui.ShowWindow(mpv_hwnd, win32con.SW_HIDE)
-            else:
-                if visible:
-                    if not win32gui.IsWindowVisible(mpv_hwnd):
-                         win32gui.ShowWindow(mpv_hwnd, win32con.SW_SHOW)
+    while mpv_process.poll() is None:
+        if quit_requested:
+            mpv_process.terminate()
+            return
+        
+        if restart_requested:
+            log("Restartuje proces MPV...")
+            mpv_process.terminate()
+            return 
 
-                    if not win32gui.IsIconic(discord_hwnd):
-                        rect = win32gui.GetWindowRect(discord_hwnd)
-                        d_x, d_y = rect[0], rect[1]
-                        d_w = rect[2] - rect[0] 
-                        d_h = rect[3] - rect[1] 
-                        
-                        new_width = d_w - OFFSET_X - MARGIN_RIGHT
-                        new_height = d_h - OFFSET_Y - MARGIN_BOTTOM
-                        
-                        if new_width < 100: new_width = 100
-                        if new_height < 100: new_height = 100
+        if not win32gui.IsWindow(discord_hwnd):
+            log("Discord zamkniety.")
+            mpv_process.terminate()
+            return
 
+        # Logika widoczności
+        if win32gui.IsIconic(discord_hwnd):
+            if win32gui.IsWindowVisible(mpv_hwnd):
+                win32gui.ShowWindow(mpv_hwnd, win32con.SW_HIDE)
+        else:
+            if visible:
+                if not win32gui.IsWindowVisible(mpv_hwnd):
+                        win32gui.ShowWindow(mpv_hwnd, win32con.SW_SHOW)
+
+                if not win32gui.IsIconic(discord_hwnd):
+                    rect = win32gui.GetWindowRect(discord_hwnd)
+                    d_x, d_y = rect[0], rect[1]
+                    d_w = rect[2] - rect[0] 
+                    d_h = rect[3] - rect[1] 
+                    
+                    new_width = d_w - OFFSET_X - MARGIN_RIGHT
+                    new_height = d_h - OFFSET_Y - MARGIN_BOTTOM
+                    
+                    if new_width < 100: new_width = 100
+                    if new_height < 100: new_height = 100
+
+                    try:
                         win32gui.SetWindowPos(
                             mpv_hwnd, 
                             0, 
@@ -168,19 +294,48 @@ def main():
                             new_height,    
                             win32con.SWP_NOZORDER | win32con.SWP_NOACTIVATE | win32con.SWP_NOOWNERZORDER
                         )
-                else:
-                    if win32gui.IsWindowVisible(mpv_hwnd):
-                        win32gui.ShowWindow(mpv_hwnd, win32con.SW_HIDE)
+                    except Exception:
+                        pass
+            else:
+                if win32gui.IsWindowVisible(mpv_hwnd):
+                    win32gui.ShowWindow(mpv_hwnd, win32con.SW_HIDE)
 
-            time.sleep(0.01)
+        time.sleep(0.01)
 
-    except KeyboardInterrupt:
-        log("Koniec.")
+def main_loop_thread():
+    keyboard.add_hotkey(HOTKEY_TOGGLE_STREAM, toggle_hide)
+    
+    # Próba ukrycia konsoli po starcie
+    time.sleep(1)
+    
+    disable_close_button()
+    toggle_console() # To powinno ją ukryć
+    
+    try:
+        while not quit_requested:
+            run_stream_cycle()
+            if not quit_requested:
+                time.sleep(1)
     finally:
-        keyboard.unhook_all()
-        if mpv_process.poll() is None:
-            mpv_process.terminate()
         kill_old_mpv()
+        keyboard.unhook_all()
+        os._exit(0)
 
 if __name__ == "__main__":
-    main()
+    t = threading.Thread(target=main_loop_thread)
+    t.daemon = True
+    t.start()
+
+    menu = pystray.Menu(
+        pystray.MenuItem("Otwórz/Ukryj Logi", toggle_console, default=True),
+        pystray.MenuItem("Restart Stream", trigger_restart),
+        pystray.MenuItem("Zakończ", trigger_quit)
+    )
+
+    icon = pystray.Icon("DiscordStream", create_tray_icon(), "Discord Stream Overlay", menu)
+    
+    print("Aplikacja uruchomiona. Sprawdź pasek zadań (tray).")
+    try:
+        icon.run()
+    except Exception as e:
+        print(f"Błąd ikony tray: {e}")
