@@ -28,13 +28,13 @@ Clone this repository or download it as a ZIP file and extract it to a folder (e
 ### 2. Install Python Dependencies
 Open a terminal (Command Prompt) in the project folder and run:
 ```bash
-pip install requirements.txt
+pip install -r requirements.txt
 ```
 
 ### 3. Download MPV Player
 Since MPV is not included in this repo (to keep it lightweight), you must download it separately:
-1.  Go to [MPV Windows Builds (by shinchiro)](https://sourceforge.net/projects/mpv-player-windows/files/64bit/).
-2.  Download the latest version (e.g., `mpv-x86_64-...-git-....7z`).
+1.  Go to [MPV Windows Builds (by shinchiro)](https://sourceforge.net/projects/mpv-player-windows/files/64bit-v3/).
+2.  Download the latest version (e.g., `mpv-x86_64-v3-...-git-...`).
 3.  Extract the files to a permanent location on your PC (e.g., `C:\Apps\mpv`).
 4.  **Note down the path** where `mpv.exe` is located.
 
