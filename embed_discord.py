@@ -48,7 +48,8 @@ if TRYB_TESTOWY:
     CMD.append("--idle")
     CMD.append("--background-color=0.2/0.2/0.2") 
 else:
-    SOURCE = "srt://0.0.0.0:10000?mode=listener&latency=50000"
+    SOURCE = "srt://192.168.8.122:8890?streamid=read:kolega&mode=caller&latency=50000"
+    #SOURCE = "srt://0.0.0.0:10000?mode=listener&latency=50000"
     CMD.append(SOURCE)
 
 # Zmienne globalne
@@ -75,11 +76,10 @@ def disable_close_button():
         if hwnd:
             hMenu = win32gui.GetSystemMenu(hwnd, False)
             if hMenu:
-                # Próbujemy usunąć przycisk. Jak się nie uda (bo już go nie ma), to trudno.
                 win32gui.DeleteMenu(hMenu, win32con.SC_CLOSE, win32con.MF_BYCOMMAND)
                 win32gui.DrawMenuBar(hwnd)
     except Exception:
-        pass # Ignorujemy błędy, żeby nie psuć działania programu
+        pass 
 
 def toggle_console(icon=None, item=None):
     """Inteligentne zarządzanie konsolą"""
@@ -107,27 +107,20 @@ def toggle_console(icon=None, item=None):
             pass
         return
 
-    # CASE 2: Konsola istnieje - przełączamy widoczność
+    # CASE 2: Konsola istnieje - chowamy lub pokazujemy
     try:
         if console_visible:
-            # Ukrywanie
             win32gui.ShowWindow(hwnd, win32con.SW_HIDE)
             console_visible = False
         else:
-            # Pokazywanie
             win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
-            
-            # Próba blokady X (cicha)
             disable_close_button()
-            
             try:
                 win32gui.SetWindowPos(hwnd, win32con.HWND_TOP, 100, 100, 900, 600, 0x0040)
                 win32gui.SetForegroundWindow(hwnd)
             except Exception:
                 pass 
-                
             console_visible = True
-            
     except Exception as e:
         log(f"Blad przelaczania okna: {e}")
 
@@ -135,8 +128,8 @@ def trigger_restart(icon=None, item=None):
     global restart_requested
     log("!!! ZAZADANO RESTARTU Z MENU !!!")
     restart_requested = True
-    if not console_visible or not get_console_window():
-        toggle_console()
+    # USUNIĘTO: Linijki wymuszające pokazanie konsoli.
+    # Teraz restart jest cichy.
 
 def trigger_quit(icon=None, item=None):
     global quit_requested
