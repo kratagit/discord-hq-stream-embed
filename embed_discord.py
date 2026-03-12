@@ -1,6 +1,5 @@
 import win32gui
 import win32con
-import win32api
 import subprocess
 import time
 import keyboard
@@ -10,9 +9,10 @@ import ctypes
 from PIL import Image, ImageDraw
 import pystray
 import os
+import tempfile
 
 # ================= KONFIGURACJA =================
-MPV_EXE = r"C:\Users\Krata\Home\Programy\mpv-x86_64-v3-20251228-git-a58dd8a\mpv.exe"
+STREAM_URL = "http://192.168.8.122:8889/stream_legionowo/"
 WINDOW_TITLE = "MOJ_STREAM" 
 
 # Skrót do chowania obrazu
@@ -23,38 +23,10 @@ OFFSET_X = 325
 OFFSET_Y = 38
 MARGIN_RIGHT = 8
 MARGIN_BOTTOM = 66
-
-TRYB_TESTOWY = True
 # ================================================
 
-CMD = [
-    MPV_EXE,
-    f"--title={WINDOW_TITLE}",
-    "--no-keepaspect-window",   
-    "--profile=low-latency",
-    "--no-cache",
-    "--hwdec=auto",
-    "--vd-lavc-threads=1",
-    "--border=no",
-    "--force-window=immediate",
-    "--idle=yes",
-    "--keep-open=yes",
-    "--mute=yes",
-    "--no-osc",
-    "--input-conf=input.conf",
-    "--script=scripts/latency.lua"
-]
-
-if TRYB_TESTOWY:
-    CMD.append("--idle")
-    CMD.append("--background-color=0.2/0.2/0.2") 
-else:
-    SOURCE = "srt://192.168.8.122:8890?streamid=read:kolega&mode=caller&latency=50000"
-    #SOURCE = "srt://0.0.0.0:10000?mode=listener&latency=50000"
-    CMD.append(SOURCE)
-
 # Zmienne globalne
-mpv_hwnd = None
+viewer_hwnd = None
 discord_hwnd = None
 visible = True
 console_visible = True
@@ -71,7 +43,6 @@ def get_console_window():
     return ctypes.windll.kernel32.GetConsoleWindow()
 
 def disable_close_button():
-    """Wyłącza przycisk X, ale po cichu (bez błędów)"""
     try:
         hwnd = get_console_window()
         if hwnd:
@@ -83,20 +54,16 @@ def disable_close_button():
         pass 
 
 def toggle_console(icon=None, item=None):
-    """Inteligentne zarządzanie konsolą"""
     global console_visible
     hwnd = get_console_window()
     
-    # CASE 1: Konsola nie istnieje - tworzymy nową
     if not hwnd or hwnd == 0:
         try:
             ctypes.windll.kernel32.AllocConsole()
             sys.stdout = open("CONOUT$", "w")
             sys.stderr = open("CONOUT$", "w")
             ctypes.windll.kernel32.SetConsoleTitleW("Logi Discord Stream")
-            
             disable_close_button()
-            
             hwnd = get_console_window()
             try:
                 win32gui.SetWindowPos(hwnd, win32con.HWND_TOP, 100, 100, 900, 600, 0x0040)
@@ -108,7 +75,6 @@ def toggle_console(icon=None, item=None):
             pass
         return
 
-    # CASE 2: Konsola istnieje - chowamy lub pokazujemy
     try:
         if console_visible:
             win32gui.ShowWindow(hwnd, win32con.SW_HIDE)
@@ -129,8 +95,6 @@ def trigger_restart(icon=None, item=None):
     global restart_requested
     log("!!! ZAZADANO RESTARTU Z MENU !!!")
     restart_requested = True
-    # USUNIĘTO: Linijki wymuszające pokazanie konsoli.
-    # Teraz restart jest cichy.
 
 def trigger_quit(icon=None, item=None):
     global quit_requested
@@ -149,9 +113,39 @@ def create_tray_icon():
     dc.rectangle((width // 4, height // 4, width * 3 // 4, height * 3 // 4), fill=color2)
     return image
 
-def kill_old_mpv():
-    subprocess.run(f"taskkill /F /FI \"WINDOWTITLE eq {WINDOW_TITLE}\"", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    subprocess.run("taskkill /F /IM mpv.exe", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+def create_webview_script():
+    """Generuje oddzielny mikroskrypt pywebview."""
+    script_content = f'''import webview
+import sys
+
+html_content = """<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body, html {{ margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #000; }}
+        iframe {{ width: 100%; height: 100%; border: none; }}
+    </style>
+</head>
+<body>
+    <iframe src="{STREAM_URL}" allow="autoplay; fullscreen; camera; microphone"></iframe>
+</body>
+</html>"""
+
+try:
+    window = webview.create_window("{WINDOW_TITLE}", html=html_content, frameless=True, background_color="#000000")
+    webview.start()
+except Exception as e:
+    print(f"WEBVIEW ERROR: {{e}}")
+    sys.exit(1)
+'''
+    script_path = os.path.join(tempfile.gettempdir(), "whep_viewer.py")
+    with open(script_path, "w", encoding="utf-8") as f:
+        f.write(script_content)
+    return script_path
+
+def kill_old_viewers():
+    cmd = f'taskkill /F /FI "WINDOWTITLE eq {WINDOW_TITLE}"'
+    subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def find_discord():
     def callback(hwnd, result):
@@ -161,43 +155,39 @@ def find_discord():
                 rect = win32gui.GetWindowRect(hwnd)
                 if (rect[2] - rect[0]) > 200: 
                     result.append(hwnd)
-    wins = []
+    wins =[]
     win32gui.EnumWindows(callback, wins)
     return wins[0] if wins else None
 
+def find_viewer_window():
+    """Wyszukuje okno po dokładnym tytule zamiast PID-u"""
+    found_hwnds =[]
+    def callback(hwnd, _):
+        if win32gui.IsWindowVisible(hwnd):
+            if win32gui.GetWindowText(hwnd) == WINDOW_TITLE:
+                found_hwnds.append(hwnd)
+        return True
+    win32gui.EnumWindows(callback, None)
+    return found_hwnds[0] if found_hwnds else None
+
 def toggle_hide():
-    global visible, mpv_hwnd
-    if not mpv_hwnd: return
+    global visible, viewer_hwnd
+    if not viewer_hwnd: return
     if visible:
-        win32gui.ShowWindow(mpv_hwnd, win32con.SW_HIDE)
+        win32gui.ShowWindow(viewer_hwnd, win32con.SW_HIDE)
         visible = False
     else:
-        win32gui.ShowWindow(mpv_hwnd, win32con.SW_SHOW)
+        win32gui.ShowWindow(viewer_hwnd, win32con.SW_SHOW)
         visible = True
 
-def monitor_mpv_output(proc):
-    try:
-        for line in iter(proc.stdout.readline, b''):
-            if not line: break
-            msg = line.decode('utf-8', errors='ignore').strip()
-            if "input.conf" not in msg:
-                try:
-                    print(f"[MPV] {msg}")
-                except:
-                    pass
-    except Exception:
-        pass
-    finally:
-        proc.stdout.close()
-
 def run_stream_cycle():
-    global mpv_hwnd, discord_hwnd, restart_requested
+    global viewer_hwnd, discord_hwnd, restart_requested
     
     restart_requested = False
-    mpv_hwnd = None
+    viewer_hwnd = None
     
-    log("=== START CYKLU ===")
-    kill_old_mpv()
+    log("=== START CYKLU (WHEP PURE WEBVIEW) ===")
+    kill_old_viewers()
     time.sleep(0.5)
 
     log("Szukam Discorda...")
@@ -207,64 +197,69 @@ def run_stream_cycle():
         time.sleep(5)
         return 
 
-    log(f"Discord ID: {discord_hwnd}. Start MPV...")
+    log(f"Discord ID: {discord_hwnd}. Generuje mini-skrypt playera...")
+    viewer_script = create_webview_script()
     
-    try:
-        mpv_process = subprocess.Popen(CMD, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    except FileNotFoundError:
-        log("BLAD: Brak pliku mpv.exe!")
-        time.sleep(5)
-        return
-
-    t = threading.Thread(target=monitor_mpv_output, args=(mpv_process,))
-    t.daemon = True
-    t.start()
+    log("Otwieram proces strumienia...")
+    # Wywołanie skryptu z podpiętym stdout żebyśmy widzieli errory, gdy np. brakuje biblioteki
+    viewer_process = subprocess.Popen([sys.executable, viewer_script], 
+        stdout=subprocess.PIPE, 
+        stderr=subprocess.STDOUT
+    )
 
     attempts = 0
-    while not mpv_hwnd and attempts < 50:
+    # Zwiększono limit czasu do ok. 20 sekund, WebView2 potrafi wolno wstawać za 1. razem
+    while not viewer_hwnd and attempts < 100:
         time.sleep(0.2)
-        if mpv_process.poll() is not None:
-            log("BLAD: MPV sie zamknal.")
+        
+        # OCHRONA: Sprawdzamy, czy pywebview nie umarło od razu (np. brak paczki w .venv)
+        if viewer_process.poll() is not None:
+            out, _ = viewer_process.communicate()
+            error_text = out.decode('utf-8', errors='ignore').strip()
+            log(f"CRASH: Skrypt przegladarki umarl natychmiast! Powod:\n{error_text}")
+            time.sleep(5) # Czekamy by nie spamowało w pętli
             return
-        mpv_hwnd = win32gui.FindWindow(None, WINDOW_TITLE)
+
+        viewer_hwnd = find_viewer_window()
         attempts += 1
     
-    if not mpv_hwnd:
-        log("BLAD: Okno MPV nie powstalo.")
-        mpv_process.terminate()
+    if not viewer_hwnd:
+        log("BLAD: Okno WebView nie powstalo przez 20 sekund.")
+        viewer_process.terminate()
         return
 
-    log("Ustawiam Wlasciciela...")
+    log("Ustawiam Wlasciciela okna na Discorda...")
     try:
-        win32gui.SetWindowLong(mpv_hwnd, win32con.GWL_HWNDPARENT, discord_hwnd)
+        win32gui.SetWindowLong(viewer_hwnd, win32con.GWL_HWNDPARENT, discord_hwnd)
     except Exception as e:
         log(f"Blad przy SetWindowLong: {e}")
     
     log("Gotowe. Stream dziala.")
 
-    while mpv_process.poll() is None:
-        if quit_requested:
-            mpv_process.terminate()
+    while viewer_process.poll() is None:
+        if quit_requested or restart_requested:
+            if quit_requested: log("Zamykam strumien (Quit)...")
+            else: log("Restartuje proces Playera...")
+            try: viewer_process.terminate() 
+            except: pass
+            kill_old_viewers()
             return
-        
-        if restart_requested:
-            log("Restartuje proces MPV...")
-            mpv_process.terminate()
-            return 
 
         if not win32gui.IsWindow(discord_hwnd):
             log("Discord zamkniety.")
-            mpv_process.terminate()
+            try: viewer_process.terminate() 
+            except: pass
+            kill_old_viewers()
             return
 
-        # Logika widoczności
+        # Logika widoczności okna
         if win32gui.IsIconic(discord_hwnd):
-            if win32gui.IsWindowVisible(mpv_hwnd):
-                win32gui.ShowWindow(mpv_hwnd, win32con.SW_HIDE)
+            if win32gui.IsWindowVisible(viewer_hwnd):
+                win32gui.ShowWindow(viewer_hwnd, win32con.SW_HIDE)
         else:
             if visible:
-                if not win32gui.IsWindowVisible(mpv_hwnd):
-                        win32gui.ShowWindow(mpv_hwnd, win32con.SW_SHOW)
+                if not win32gui.IsWindowVisible(viewer_hwnd):
+                        win32gui.ShowWindow(viewer_hwnd, win32con.SW_SHOW)
 
                 if not win32gui.IsIconic(discord_hwnd):
                     rect = win32gui.GetWindowRect(discord_hwnd)
@@ -280,7 +275,7 @@ def run_stream_cycle():
 
                     try:
                         win32gui.SetWindowPos(
-                            mpv_hwnd, 
+                            viewer_hwnd, 
                             0, 
                             d_x + OFFSET_X, 
                             d_y + OFFSET_Y, 
@@ -291,19 +286,17 @@ def run_stream_cycle():
                     except Exception:
                         pass
             else:
-                if win32gui.IsWindowVisible(mpv_hwnd):
-                    win32gui.ShowWindow(mpv_hwnd, win32con.SW_HIDE)
+                if win32gui.IsWindowVisible(viewer_hwnd):
+                    win32gui.ShowWindow(viewer_hwnd, win32con.SW_HIDE)
 
         time.sleep(0.01)
 
 def main_loop_thread():
     keyboard.add_hotkey(HOTKEY_TOGGLE_STREAM, toggle_hide)
     
-    # Próba ukrycia konsoli po starcie
     time.sleep(1)
-    
     disable_close_button()
-    toggle_console() # To powinno ją ukryć
+    toggle_console() 
     
     try:
         while not quit_requested:
@@ -311,7 +304,7 @@ def main_loop_thread():
             if not quit_requested:
                 time.sleep(1)
     finally:
-        kill_old_mpv()
+        kill_old_viewers()
         keyboard.unhook_all()
         os._exit(0)
 
