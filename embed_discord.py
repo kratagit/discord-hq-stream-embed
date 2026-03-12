@@ -24,7 +24,7 @@ OFFSET_Y = 38
 MARGIN_RIGHT = 8
 MARGIN_BOTTOM = 66
 
-TRYB_TESTOWY = False
+TRYB_TESTOWY = True
 # ================================================
 
 CMD = [
@@ -39,6 +39,7 @@ CMD = [
     "--force-window=immediate",
     "--idle=yes",
     "--keep-open=yes",
+    "--mute=yes",
     "--no-osc",
     "--input-conf=input.conf",
     "--script=scripts/latency.lua"

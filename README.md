@@ -99,7 +99,7 @@ Instead of selecting a service like Twitch, choose **Custom...**:
     ```bash
     python embed_discord.py
     ```
-3.  A black window will appear and snap to Discord. It is now waiting for the stream.
+3.  A black window will appear and snap to Discord. It starts muted by default, so you need to unmute it manually when you want audio.
 4.  Ask your friend to **Start Streaming** in OBS.
 5.  The video should appear instantly.
 
