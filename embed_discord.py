@@ -117,7 +117,7 @@ def create_tray_icon():
     return image
 
 def create_webview_script():
-    """Generuje skrypt przeglądarki ze 100% pewną metodą flagowania Fullscreena"""
+    """Generuje skrypt przeglądarki z Niewidzialną Tarczą blokującą klikanie w wideo"""
     flag_escaped = FS_FLAG.replace('\\', '\\\\')
     
     script_content = f'''import webview
@@ -147,11 +147,28 @@ html_content = """<!DOCTYPE html>
 <head>
     <style>
         body, html {{ margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #000; }}
+        .container {{ position: relative; width: 100%; height: 100%; }}
         iframe {{ width: 100%; height: 100%; border: none; }}
+        
+        /* TARCZA: blokuje klikanie na środku obrazu, zostawiając 52px luzu na dole na przyciski play/pause/fullscreen */
+        .click-shield {{
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: calc(100% - 52px);
+            z-index: 999;
+        }}
     </style>
 </head>
 <body>
-    <iframe src="{STREAM_URL}" allow="autoplay; fullscreen; camera; microphone" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"></iframe>
+    <div class="container">
+        <iframe src="{STREAM_URL}" allow="autoplay; fullscreen; camera; microphone" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"></iframe>
+        
+        <!-- Warstwa wchłaniająca kliknięcia -->
+        <div class="click-shield" oncontextmenu="return false;"></div>
+    </div>
+
     <script>
         let lastFs = false;
         function checkFs() {{
