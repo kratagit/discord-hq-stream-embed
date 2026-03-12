@@ -24,7 +24,7 @@ OFFSET_Y = 38
 MARGIN_RIGHT = 8
 MARGIN_BOTTOM = 66
 
-TRYB_TESTOWY = True
+TRYB_TESTOWY = False
 # ================================================
 
 CMD = [
