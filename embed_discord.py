@@ -1,5 +1,6 @@
 import win32gui
 import win32con
+import win32api
 import subprocess
 import time
 import keyboard
@@ -12,7 +13,7 @@ import os
 import tempfile
 
 # ================= KONFIGURACJA =================
-STREAM_URL = "http://192.168.8.122:8889/stream_legionowo/"
+STREAM_URL = "http://192.168.8.122:8889/stream_legionowo"
 WINDOW_TITLE = "MOJ_STREAM" 
 
 # Skrót do chowania obrazu
@@ -32,6 +33,8 @@ visible = True
 console_visible = True
 restart_requested = False
 quit_requested = False
+
+FS_FLAG = os.path.join(tempfile.gettempdir(), "discord_stream_fs.flag")
 
 def log(msg):
     try:
@@ -114,9 +117,30 @@ def create_tray_icon():
     return image
 
 def create_webview_script():
-    """Generuje oddzielny mikroskrypt pywebview."""
+    """Generuje skrypt przeglądarki ze 100% pewną metodą flagowania Fullscreena"""
+    flag_escaped = FS_FLAG.replace('\\', '\\\\')
+    
     script_content = f'''import webview
 import sys
+import os
+
+FS_FLAG = "{flag_escaped}"
+
+if os.path.exists(FS_FLAG):
+    try: os.remove(FS_FLAG)
+    except: pass
+
+class Api:
+    def set_fs(self, is_fs):
+        try:
+            if is_fs:
+                with open(FS_FLAG, 'w') as f:
+                    f.write("1")
+            else:
+                if os.path.exists(FS_FLAG):
+                    os.remove(FS_FLAG)
+        except:
+            pass
 
 html_content = """<!DOCTYPE html>
 <html>
@@ -127,12 +151,28 @@ html_content = """<!DOCTYPE html>
     </style>
 </head>
 <body>
-    <iframe src="{STREAM_URL}" allow="autoplay; fullscreen; camera; microphone"></iframe>
+    <iframe src="{STREAM_URL}" allow="autoplay; fullscreen; camera; microphone" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"></iframe>
+    <script>
+        let lastFs = false;
+        function checkFs() {{
+            let isFs = !!document.fullscreenElement;
+            if (isFs !== lastFs) {{
+                lastFs = isFs;
+                if (window.pywebview && window.pywebview.api) {{
+                    window.pywebview.api.set_fs(isFs);
+                }}
+            }}
+        }}
+        // Reakcja na natywne zdarzenia WebView i zapasowy polling
+        document.addEventListener('fullscreenchange', checkFs);
+        setInterval(checkFs, 200);
+    </script>
 </body>
 </html>"""
 
 try:
-    window = webview.create_window("{WINDOW_TITLE}", html=html_content, frameless=True, background_color="#000000")
+    api = Api()
+    window = webview.create_window("{WINDOW_TITLE}", html=html_content, frameless=True, background_color="#000000", js_api=api)
     webview.start()
 except Exception as e:
     print(f"WEBVIEW ERROR: {{e}}")
@@ -160,7 +200,6 @@ def find_discord():
     return wins[0] if wins else None
 
 def find_viewer_window():
-    """Wyszukuje okno po dokładnym tytule zamiast PID-u"""
     found_hwnds =[]
     def callback(hwnd, _):
         if win32gui.IsWindowVisible(hwnd):
@@ -185,10 +224,15 @@ def run_stream_cycle():
     
     restart_requested = False
     viewer_hwnd = None
+    is_currently_fs = False
     
     log("=== START CYKLU (WHEP PURE WEBVIEW) ===")
     kill_old_viewers()
     time.sleep(0.5)
+
+    if os.path.exists(FS_FLAG):
+        try: os.remove(FS_FLAG)
+        except: pass
 
     log("Szukam Discorda...")
     discord_hwnd = find_discord()
@@ -201,23 +245,16 @@ def run_stream_cycle():
     viewer_script = create_webview_script()
     
     log("Otwieram proces strumienia...")
-    # Wywołanie skryptu z podpiętym stdout żebyśmy widzieli errory, gdy np. brakuje biblioteki
-    viewer_process = subprocess.Popen([sys.executable, viewer_script], 
-        stdout=subprocess.PIPE, 
-        stderr=subprocess.STDOUT
-    )
+    viewer_process = subprocess.Popen([sys.executable, viewer_script], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
     attempts = 0
-    # Zwiększono limit czasu do ok. 20 sekund, WebView2 potrafi wolno wstawać za 1. razem
     while not viewer_hwnd and attempts < 100:
         time.sleep(0.2)
-        
-        # OCHRONA: Sprawdzamy, czy pywebview nie umarło od razu (np. brak paczki w .venv)
         if viewer_process.poll() is not None:
             out, _ = viewer_process.communicate()
             error_text = out.decode('utf-8', errors='ignore').strip()
             log(f"CRASH: Skrypt przegladarki umarl natychmiast! Powod:\n{error_text}")
-            time.sleep(5) # Czekamy by nie spamowało w pętli
+            time.sleep(5) 
             return
 
         viewer_hwnd = find_viewer_window()
@@ -252,7 +289,49 @@ def run_stream_cycle():
             kill_old_viewers()
             return
 
-        # Logika widoczności okna
+        # ========================================
+        # BEZPIECZNA LOGIKA PEŁNEGO EKRANU
+        # ========================================
+        is_fs_now = os.path.exists(FS_FLAG)
+        
+        if is_fs_now:
+            if not is_currently_fs:
+                is_currently_fs = True
+                log("Wykryto Pełny Ekran! Odpinam WebView od Discorda.")
+                
+                # Zdejmujemy wlasciciela (Discord), aby okno mogło zakryć cały ekran niezależnie
+                win32gui.SetWindowLong(viewer_hwnd, win32con.GWL_HWNDPARENT, 0)
+                
+                # Dynamicznie sprawdzamy na którym monitorze jest obecnie aplikacja
+                try:
+                    # 2 to wartość stałej win32con.MONITOR_DEFAULTTONEAREST
+                    monitor = win32api.MonitorFromWindow(discord_hwnd, 2)
+                    monitor_info = win32api.GetMonitorInfo(monitor)
+                    m_rect = monitor_info['Monitor']
+                    m_x, m_y, m_w, m_h = m_rect[0], m_rect[1], m_rect[2] - m_rect[0], m_rect[3] - m_rect[1]
+                except Exception:
+                    # Awaryjnie Główny Monitor
+                    m_x, m_y = 0, 0
+                    m_w = win32api.GetSystemMetrics(win32con.SM_CXSCREEN)
+                    m_h = win32api.GetSystemMetrics(win32con.SM_CYSCREEN)
+
+                # Wymuszamy nakładkę na cały ekran
+                win32gui.SetWindowPos(viewer_hwnd, win32con.HWND_TOPMOST, m_x, m_y, m_w, m_h, win32con.SWP_SHOWWINDOW)
+            
+            # Gdy ekran jest pełny, 'continue' pomija kod dopasowujący rozmiar pod Discorda
+            time.sleep(0.05)
+            continue
+        else:
+            if is_currently_fs:
+                is_currently_fs = False
+                log("Wyłączono Pełny Ekran. Przypinam z powrotem do Discorda.")
+                # Przywracamy nakładkę do okna Discorda
+                win32gui.SetWindowLong(viewer_hwnd, win32con.GWL_HWNDPARENT, discord_hwnd)
+                # Ściągamy wymuszenie najwyższej warstwy TOPMOST
+                win32gui.SetWindowPos(viewer_hwnd, win32con.HWND_NOTOPMOST, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
+
+
+        # Standardowa logika pozycjonowania odtwarzacza w Discordzie
         if win32gui.IsIconic(discord_hwnd):
             if win32gui.IsWindowVisible(viewer_hwnd):
                 win32gui.ShowWindow(viewer_hwnd, win32con.SW_HIDE)
@@ -305,6 +384,9 @@ def main_loop_thread():
                 time.sleep(1)
     finally:
         kill_old_viewers()
+        if os.path.exists(FS_FLAG):
+            try: os.remove(FS_FLAG)
+            except: pass
         keyboard.unhook_all()
         os._exit(0)
 
