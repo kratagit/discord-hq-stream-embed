@@ -1,0 +1,51 @@
+# .github/workflows/build.yml
+name: Build Windows Executable
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Trigger only when a tag like v1.0.0 is pushed
+
+jobs:
+  build:
+    name: Build Windows EXE
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+          pip install -r requirements.txt
+          
+      - name: Get tag version
+        id: get_version
+        shell: pwsh
+        run: |
+          # Extract the version number without the 'v' prefix
+          $tag = "${{ github.ref_name }}"
+          $version = $tag.TrimStart('v')
+          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+          
+      - name: Build with PyInstaller
+        run: |
+          pyinstaller --noconfirm --onefile --windowed --icon=NONE --name "Discord_Stream_Overlay-${{ steps.get_version.outputs.VERSION }}-Windows-x86_64" embed_discord.py
+          
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/Discord_Stream_Overlay-${{ steps.get_version.outputs.VERSION }}-Windows-x86_64.exe
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
