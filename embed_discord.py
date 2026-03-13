@@ -7,23 +7,55 @@ import keyboard
 import sys
 import threading
 import ctypes
+import json
+import tkinter as tk
+from tkinter import simpledialog, messagebox
 from PIL import Image, ImageDraw
 import pystray
 import os
 import tempfile
 
-# ================= KONFIGURACJA =================
-STREAM_URL = "http://192.168.8.122:8889/stream_legionowo"
-WINDOW_TITLE = "MOJ_STREAM" 
+# ================= KONFIGURACJA DOMYŚLNA =================
+CONFIG_FILE = "config.json"
+
+def load_config():
+    default_config = {
+        "STREAM_URL": "http://192.168.8.122:8889/stream_legionowo",
+        "HOTKEY_TOGGLE_STREAM": "f7+f8",
+        "WINDOW_TITLE": "MOJ_STREAM",
+        "OFFSET_X": 325,
+        "OFFSET_Y": 38,
+        "MARGIN_RIGHT": 8,
+        "MARGIN_BOTTOM": 66
+    }
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                default_config.update(json.load(f))
+        except Exception:
+            pass
+    return default_config
+
+def save_config(cfg):
+    try:
+        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+            json.dump(cfg, f, indent=4)
+    except Exception:
+        pass
+
+cfg = load_config()
+
+STREAM_URL = cfg["STREAM_URL"]
+WINDOW_TITLE = cfg["WINDOW_TITLE"] 
 
 # Skrót do chowania obrazu
-HOTKEY_TOGGLE_STREAM = "f7+f8"   
+HOTKEY_TOGGLE_STREAM = cfg["HOTKEY_TOGGLE_STREAM"]   
 
 # --- ODSTĘPY (Marginesy) ---
-OFFSET_X = 325
-OFFSET_Y = 38
-MARGIN_RIGHT = 8
-MARGIN_BOTTOM = 66
+OFFSET_X = cfg["OFFSET_X"]
+OFFSET_Y = cfg["OFFSET_Y"]
+MARGIN_RIGHT = cfg["MARGIN_RIGHT"]
+MARGIN_BOTTOM = cfg["MARGIN_BOTTOM"]
 # ================================================
 
 # Zmienne globalne
@@ -33,6 +65,7 @@ visible = True
 console_visible = True
 restart_requested = False
 quit_requested = False
+options_open = False
 
 FS_FLAG = os.path.join(tempfile.gettempdir(), "discord_stream_fs.flag")
 
@@ -98,6 +131,90 @@ def trigger_restart(icon=None, item=None):
     global restart_requested
     log("!!! ZAZADANO RESTARTU Z MENU !!!")
     restart_requested = True
+
+def open_options_dialog():
+    global STREAM_URL, HOTKEY_TOGGLE_STREAM, toggle_hide, options_open
+    
+    if options_open:
+        return
+    options_open = True
+    
+    root = tk.Tk()
+    root.title("Opcje (Ustawienia Strumienia)")
+    root.geometry("500x250")
+    root.attributes('-topmost', True) # Zawsze na wierzchu do czasu zamknięcia
+    
+    # Wyśrodkowanie okna na ekranie (bardzie precyzyjna metoda)
+    root.update_idletasks()
+    width = 500
+    height = 250
+    x = (root.winfo_screenwidth() // 2) - (width // 2)
+    y = (root.winfo_screenheight() // 2) - (height // 2)
+    root.geometry(f'{width}x{height}+{x}+{y}')
+    
+    # URL
+    tk.Label(root, text="Adres strumienia (STREAM_URL):", font=("Arial", 10, "bold")).pack(pady=(15, 0))
+    url_entry = tk.Entry(root, width=65, font=("Arial", 10))
+    url_entry.insert(0, STREAM_URL)
+    url_entry.pack(pady=5)
+    
+    # Hotkey
+    tk.Label(root, text="Skrót do ukrywania okna (HOTKEY_TOGGLE_STREAM):", font=("Arial", 10, "bold")).pack(pady=(15, 0))
+    hotkey_entry = tk.Entry(root, width=65, font=("Arial", 10))
+    hotkey_entry.insert(0, HOTKEY_TOGGLE_STREAM)
+    hotkey_entry.pack(pady=5)
+    
+    def on_window_close():
+        global options_open
+        options_open = False
+        root.destroy()
+    
+    def on_save():
+        global STREAM_URL, HOTKEY_TOGGLE_STREAM, options_open
+        
+        new_url = url_entry.get().strip()
+        new_hotkey = hotkey_entry.get().strip()
+        
+        if new_url:
+            STREAM_URL = new_url
+            
+        if new_hotkey and new_hotkey != HOTKEY_TOGGLE_STREAM:
+            try:
+                keyboard.remove_hotkey(HOTKEY_TOGGLE_STREAM)
+            except Exception:
+                pass
+            HOTKEY_TOGGLE_STREAM = new_hotkey
+            try:
+                keyboard.add_hotkey(HOTKEY_TOGGLE_STREAM, toggle_hide)
+            except Exception as e:
+                messagebox.showerror("Błąd", f"Nie udało się ustawić skrótu {new_hotkey}:\n{e}")
+                
+        # Zapisanie do pliku
+        cfg["STREAM_URL"] = STREAM_URL
+        cfg["HOTKEY_TOGGLE_STREAM"] = HOTKEY_TOGGLE_STREAM
+        save_config(cfg)
+        
+        log("Zapisano opcje z głównego okna.")
+        on_window_close()
+        trigger_restart()
+
+    def on_cancel():
+        on_window_close()
+        
+    root.protocol("WM_DELETE_WINDOW", on_window_close)
+    
+    btn_frame = tk.Frame(root)
+    btn_frame.pack(pady=20)
+    
+    tk.Button(btn_frame, text="Zapisz i Zrestartuj", command=on_save, bg="green", fg="white", width=20, font=("Arial", 10, "bold")).pack(side=tk.LEFT, padx=15)
+    tk.Button(btn_frame, text="Anuluj", command=on_cancel, width=15, font=("Arial", 10)).pack(side=tk.RIGHT, padx=15)
+    
+    root.focus_force()
+    root.mainloop()
+
+def open_options(icon=None, item=None):
+    # Trzeba to uruchomić w nowym wątku, bo pystray blokuje główny loop
+    threading.Thread(target=open_options_dialog, daemon=True).start()
 
 def trigger_quit(icon=None, item=None):
     global quit_requested
@@ -414,6 +531,7 @@ if __name__ == "__main__":
 
     menu = pystray.Menu(
         pystray.MenuItem("Otwórz/Ukryj Logi", toggle_console, default=True),
+        pystray.MenuItem("Opcje (Ustawienia)", open_options),
         pystray.MenuItem("Restart Stream", trigger_restart),
         pystray.MenuItem("Zakończ", trigger_quit)
     )
