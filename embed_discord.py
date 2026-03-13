@@ -14,6 +14,7 @@ from PIL import Image, ImageDraw
 import pystray
 import os
 import tempfile
+import webview
 
 # ================= KONFIGURACJA DOMYŚLNA =================
 CONFIG_FILE = "config.json"
@@ -96,8 +97,8 @@ def toggle_console(icon=None, item=None):
     if not hwnd or hwnd == 0:
         try:
             ctypes.windll.kernel32.AllocConsole()
-            sys.stdout = open("CONOUT$", "w")
-            sys.stderr = open("CONOUT$", "w")
+            sys.stdout = open("CONOUT$", "w", encoding="utf-8")
+            sys.stderr = open("CONOUT$", "w", encoding="utf-8")
             ctypes.windll.kernel32.SetConsoleTitleW("Logi Discord Stream")
             disable_close_button()
             hwnd = get_console_window()
@@ -126,6 +127,17 @@ def toggle_console(icon=None, item=None):
             console_visible = True
     except Exception as e:
         log(f"Blad przelaczania okna: {e}")
+
+def hide_console():
+    global console_visible
+    hwnd = get_console_window()
+    if hwnd and console_visible:
+        try:
+            win32gui.ShowWindow(hwnd, win32con.SW_HIDE)
+            console_visible = False
+            log("Zwijam konsole, stream nadaje ok.")
+        except Exception:
+            pass
 
 def trigger_restart(icon=None, item=None):
     global restart_requested
@@ -406,6 +418,7 @@ def run_stream_cycle():
         log(f"Blad przy SetWindowLong: {e}")
     
     log("Gotowe. Stream dziala.")
+    hide_console()
 
     while viewer_process.poll() is None:
         if quit_requested or restart_requested:
@@ -525,6 +538,15 @@ def main_loop_thread():
         os._exit(0)
 
 if __name__ == "__main__":
+    import sys
+    # --- FIX PyInstaller "Bomba procesów" (Fork Bomb) ---
+    # Jeżeli PyInstaller uruchomi ten plik .exe z argumentem do skryptu webview, wykonaj po prostu go i wyjdź!
+    if len(sys.argv) > 1 and sys.argv[1].endswith("whep_viewer.py"):
+        with open(sys.argv[1], "r", encoding="utf-8") as f:
+            code = f.read()
+        exec(code)
+        sys.exit(0)
+
     t = threading.Thread(target=main_loop_thread)
     t.daemon = True
     t.start()
@@ -538,8 +560,8 @@ if __name__ == "__main__":
 
     icon = pystray.Icon("DiscordStream", create_tray_icon(), "Discord Stream Overlay", menu)
     
-    print("Aplikacja uruchomiona. Sprawdź pasek zadań (tray).")
+    print("Aplikacja uruchomiona. Sprawdz pasek zadan (tray).")
     try:
         icon.run()
     except Exception as e:
-        print(f"Błąd ikony tray: {e}")
+        print(f"Blad ikony tray: {e}")
