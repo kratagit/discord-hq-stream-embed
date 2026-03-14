@@ -18,12 +18,13 @@ import webview
 
 # ================= CONFIGURATION =================
 APP_NAME = "Discord_Stream_Overlay"
+SINGLE_INSTANCE_MUTEX_NAME = "Local\\Discord_Stream_Overlay_SingleInstance_Mutex"
 CONFIG_DIR = os.path.join(os.getenv('APPDATA'), APP_NAME) if os.name == 'nt' else os.path.join(os.path.expanduser("~"), "." + APP_NAME)
 CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
 
 def load_config():
     default_config = {
-        "STREAM_URL": "http://192.168.8.122:8889/stream_legionowo",
+        "STREAM_URL": "http://192.168.8.122:8889/stream",
         "HOTKEY_TOGGLE_STREAM": "f7+f8",
         "WINDOW_TITLE": "MY_STREAM",
         "OFFSET_X": 325,
@@ -78,14 +79,75 @@ restart_requested = False
 quit_requested = False
 options_open = False
 options_root = None
+tray_icon = None
+
+single_instance_mutex = None
+ERROR_ALREADY_EXISTS = 183
 
 FS_FLAG = os.path.join(tempfile.gettempdir(), "discord_stream_fs.flag")
 
 def log(msg):
+    pass
+
+def suppress_console_output():
     try:
-        print(f"[LOG] {msg}")
-    except OSError:
-        pass 
+        if os.name == 'nt':
+            hwnd = ctypes.windll.kernel32.GetConsoleWindow()
+            if hwnd:
+                ctypes.windll.kernel32.FreeConsole()
+    except Exception:
+        pass
+
+    try:
+        devnull = open(os.devnull, "w", encoding="utf-8")
+        sys.stdout = devnull
+        sys.stderr = devnull
+    except Exception:
+        pass
+
+def ensure_single_instance():
+    global single_instance_mutex
+    if os.name != 'nt':
+        return True
+
+    kernel32 = ctypes.windll.kernel32
+    mutex_handle = kernel32.CreateMutexW(None, False, SINGLE_INSTANCE_MUTEX_NAME)
+    if not mutex_handle:
+        return True
+
+    if kernel32.GetLastError() == ERROR_ALREADY_EXISTS:
+        kernel32.CloseHandle(mutex_handle)
+        return False
+
+    single_instance_mutex = mutex_handle
+    return True
+
+def get_launcher_executable():
+    if getattr(sys, 'frozen', False):
+        return sys.executable
+
+    python_exe = sys.executable.lower()
+    if python_exe.endswith("python.exe"):
+        pythonw_exe = sys.executable[:-10] + "pythonw.exe"
+        if os.path.exists(pythonw_exe):
+            return pythonw_exe
+    return sys.executable
+
+def is_parent_process_alive(parent_pid):
+    if os.name != 'nt':
+        return True
+    try:
+        kernel32 = ctypes.windll.kernel32
+        SYNCHRONIZE = 0x00100000
+        process_handle = kernel32.OpenProcess(SYNCHRONIZE, False, parent_pid)
+        if not process_handle:
+            return False
+        WAIT_TIMEOUT = 258
+        status = kernel32.WaitForSingleObject(process_handle, 0)
+        kernel32.CloseHandle(process_handle)
+        return status == WAIT_TIMEOUT
+    except Exception:
+        return True
 
 def get_console_window():
     return ctypes.windll.kernel32.GetConsoleWindow()
@@ -154,6 +216,17 @@ def trigger_restart(icon=None, item=None):
     global restart_requested
     log("!!! RESTART REQUESTED FROM MENU !!!")
     restart_requested = True
+
+def trigger_global_shutdown(reason=""):
+    global quit_requested, tray_icon
+    quit_requested = True
+    if reason:
+        log(reason)
+    if tray_icon:
+        try:
+            tray_icon.stop()
+        except Exception:
+            pass
 
 def get_resource_path(relative_path):
     """Returns resource path whether running as script or compiled exe"""
@@ -416,8 +489,32 @@ def create_webview_script():
     script_content = f'''import webview
 import sys
 import os
+import ctypes
+import threading
+import time
 
 FS_FLAG = "{flag_escaped}"
+PARENT_PID = {os.getpid()}
+
+def is_parent_alive(pid):
+    try:
+        kernel32 = ctypes.windll.kernel32
+        SYNCHRONIZE = 0x00100000
+        process_handle = kernel32.OpenProcess(SYNCHRONIZE, False, pid)
+        if not process_handle:
+            return False
+        WAIT_TIMEOUT = 258
+        status = kernel32.WaitForSingleObject(process_handle, 0)
+        kernel32.CloseHandle(process_handle)
+        return status == WAIT_TIMEOUT
+    except Exception:
+        return True
+
+def parent_watchdog():
+    while True:
+        if not is_parent_alive(PARENT_PID):
+            os._exit(0)
+        time.sleep(1)
 
 if os.path.exists(FS_FLAG):
     try: os.remove(FS_FLAG)
@@ -481,11 +578,11 @@ html_content = """<!DOCTYPE html>
 </html>"""
 
 try:
+    threading.Thread(target=parent_watchdog, daemon=True).start()
     api = Api()
     window = webview.create_window("{WINDOW_TITLE}", html=html_content, frameless=True, background_color="#000000", js_api=api, hidden=True)
     webview.start()
 except Exception as e:
-    print(f"WEBVIEW ERROR: {{e}}")
     sys.exit(1)
 '''
     script_path = os.path.join(tempfile.gettempdir(), "whep_viewer.py")
@@ -554,16 +651,21 @@ def run_stream_cycle():
     viewer_script = create_webview_script()
     
     log("Opening stream process...")
-    viewer_process = subprocess.Popen([sys.executable, viewer_script], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    creation_flags = 0
+    if os.name == 'nt':
+        creation_flags = subprocess.CREATE_NO_WINDOW
+    viewer_process = subprocess.Popen(
+        [get_launcher_executable(), viewer_script],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        creationflags=creation_flags
+    )
 
     attempts = 0
     while not viewer_hwnd and attempts < 100:
         time.sleep(0.2)
         if viewer_process.poll() is not None:
-            out, _ = viewer_process.communicate()
-            error_text = out.decode('utf-8', errors='ignore').strip()
-            log(f"CRASH: Browser script died immediately! Reason:\n{error_text}")
-            time.sleep(5) 
+            trigger_global_shutdown("Viewer process crashed during startup. Shutting down all app processes.")
             return
 
         viewer_hwnd = find_viewer_window()
@@ -572,6 +674,7 @@ def run_stream_cycle():
     if not viewer_hwnd:
         log("ERROR: WebView window did not appear for 20 seconds.")
         viewer_process.terminate()
+        trigger_global_shutdown("Viewer window not created in time. Shutting down all app processes.")
         return
 
     log("Setting window owner to Discord and hiding from taskbar...")
@@ -585,8 +688,6 @@ def run_stream_cycle():
         log(f"Error during window modification: {e}")
     
     log("Done. Stream is running.")
-    hide_console()
-
     while viewer_process.poll() is None:
         if quit_requested or restart_requested:
             if quit_requested: log("Closing stream (Quit)...")
@@ -594,6 +695,13 @@ def run_stream_cycle():
             try: viewer_process.terminate() 
             except: pass
             kill_old_viewers()
+            return
+
+        if not is_parent_process_alive(os.getpid()):
+            try:
+                viewer_process.terminate()
+            except Exception:
+                pass
             return
 
         if not win32gui.IsWindow(discord_hwnd):
@@ -684,6 +792,10 @@ def run_stream_cycle():
 
         time.sleep(0.01)
 
+    if not quit_requested and not restart_requested:
+        trigger_global_shutdown("Viewer process exited unexpectedly. Shutting down all app processes.")
+        kill_old_viewers()
+
 def main_loop_thread():
     keyboard.add_hotkey(HOTKEY_TOGGLE_STREAM, toggle_hide)
     
@@ -704,6 +816,8 @@ def main_loop_thread():
 
 if __name__ == "__main__":
     import sys
+    suppress_console_output()
+
     # --- FIX PyInstaller Fork Bomb ---
     # If PyInstaller runs this .exe with webview script argument, execute it and exit!
     if len(sys.argv) > 1 and sys.argv[1].endswith("whep_viewer.py"):
@@ -712,21 +826,23 @@ if __name__ == "__main__":
         exec(code)
         sys.exit(0)
 
+    if not ensure_single_instance():
+        sys.exit(0)
+
     t = threading.Thread(target=main_loop_thread)
     t.daemon = True
     t.start()
 
     menu = pystray.Menu(
-        pystray.MenuItem("Show/Hide Logs", toggle_console, default=True),
         pystray.MenuItem("Close/Open Settings", toggle_options),
         pystray.MenuItem("Restart Stream", trigger_restart),
         pystray.MenuItem("Quit", trigger_quit)
     )
 
     icon = pystray.Icon("DiscordStream", create_tray_icon(), "Discord Stream Overlay", menu)
+    tray_icon = icon
     
-    print("App running. Check taskbar (tray).")
     try:
         icon.run()
     except Exception as e:
-        print(f"Tray icon error: {e}")
+        trigger_global_shutdown("Tray icon crashed. Shutting down all app processes.")
