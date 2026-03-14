@@ -1,6 +1,7 @@
 config.json
 pyinstaller.txt
 TODO
+*.af*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

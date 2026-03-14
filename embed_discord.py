@@ -27,7 +27,12 @@ def load_config():
         "OFFSET_X": 325,
         "OFFSET_Y": 38,
         "MARGIN_RIGHT": 8,
-        "MARGIN_BOTTOM": 66
+        "MARGIN_BOTTOM": 66,
+        "PRESETS": {
+            "1": {"OFFSET_X": 325, "OFFSET_Y": 38, "MARGIN_RIGHT": 8, "MARGIN_BOTTOM": 66},
+            "2": {"OFFSET_X": 325, "OFFSET_Y": 38, "MARGIN_RIGHT": 8, "MARGIN_BOTTOM": 66},
+            "3": {"OFFSET_X": 325, "OFFSET_Y": 38, "MARGIN_RIGHT": 8, "MARGIN_BOTTOM": 66}
+        }
     }
     if os.path.exists(CONFIG_FILE):
         try:
@@ -146,38 +151,147 @@ def trigger_restart(icon=None, item=None):
     log("!!! ZAZADANO RESTARTU Z MENU !!!")
     restart_requested = True
 
+def get_resource_path(relative_path):
+    """Zwraca ścieżkę do zasobów niezależnie od tego, czy program jest uruchomiony jako skrypt, czy jako skompilowany plik exe"""
+    import sys
+    import os
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.abspath("."), relative_path)
+
 def open_options_dialog():
     global STREAM_URL, HOTKEY_TOGGLE_STREAM, toggle_hide, options_open
+    global OFFSET_X, OFFSET_Y, MARGIN_RIGHT, MARGIN_BOTTOM
     
     if options_open:
         return
     options_open = True
     
     root = tk.Tk()
+    root.withdraw() # Ukrywamy na moment, by nie "skakało" przy tworzeniu i wyśrodkowywaniu
     root.title("Opcje (Ustawienia Strumienia)")
-    root.geometry("500x250")
+    root.resizable(False, False)
     root.attributes('-topmost', True) # Zawsze na wierzchu do czasu zamknięcia
     
-    # Wyśrodkowanie okna na ekranie (bardzie precyzyjna metoda)
-    root.update_idletasks()
-    width = 500
-    height = 250
-    x = (root.winfo_screenwidth() // 2) - (width // 2)
-    y = (root.winfo_screenheight() // 2) - (height // 2)
-    root.geometry(f'{width}x{height}+{x}+{y}')
+    # Ustawienie ikony okna
+    try:
+        import sys
+        if getattr(sys, 'frozen', False):
+            # Pobierz ikonę bezpośrednio z uruchomionego pliku .exe
+            root.iconbitmap(sys.executable)
+        else:
+            icon_path = get_resource_path(os.path.join("assets", "icon.ico"))
+            if os.path.exists(icon_path):
+                root.iconbitmap(icon_path)
+    except Exception:
+        pass
+            
+    font_bold = ("Arial", 10, "bold")
+    font_norm = ("Arial", 10)
+    
+    main_frame = tk.Frame(root, padx=20, pady=15)
+    main_frame.pack(fill="both", expand=True)
+    
+    # Funkcja do zmiany kursora na łapkę po najechaniu na przycisk
+    def on_enter(e):
+        e.widget['cursor'] = 'hand2'
+
+    def on_leave(e):
+        e.widget['cursor'] = ''
     
     # URL
-    tk.Label(root, text="Adres strumienia (STREAM_URL):", font=("Arial", 10, "bold")).pack(pady=(15, 0))
-    url_entry = tk.Entry(root, width=65, font=("Arial", 10))
+    tk.Label(main_frame, text="Adres strumienia (STREAM_URL):", font=font_bold).pack(anchor="w")
+    url_entry = tk.Entry(main_frame, width=65, font=font_norm)
     url_entry.insert(0, STREAM_URL)
-    url_entry.pack(pady=5)
+    url_entry.pack(fill="x", pady=(5, 15))
     
     # Hotkey
-    tk.Label(root, text="Skrót do ukrywania okna (HOTKEY_TOGGLE_STREAM):", font=("Arial", 10, "bold")).pack(pady=(15, 0))
-    hotkey_entry = tk.Entry(root, width=65, font=("Arial", 10))
+    tk.Label(main_frame, text="Skrót do ukrywania okna (HOTKEY_TOGGLE_STREAM):", font=font_bold).pack(anchor="w")
+    hotkey_entry = tk.Entry(main_frame, width=65, font=font_norm)
     hotkey_entry.insert(0, HOTKEY_TOGGLE_STREAM)
-    hotkey_entry.pack(pady=5)
+    hotkey_entry.pack(fill="x", pady=(5, 15))
+
+    # Marginesy
+    pos_frame = tk.LabelFrame(main_frame, text=" Marginesy i Pozycja (Dostosowanie Okna) ", font=font_bold, padx=15, pady=10)
+    pos_frame.pack(fill="x", pady=(5, 10))
+    pos_frame.columnconfigure(1, weight=1)
+    pos_frame.columnconfigure(3, weight=1)
+
+    tk.Label(pos_frame, text="OFFSET_X:", font=font_norm).grid(row=0, column=0, sticky="e", padx=5, pady=5)
+    off_x_entry = tk.Entry(pos_frame, font=font_norm, justify="center")
+    off_x_entry.insert(0, str(OFFSET_X))
+    off_x_entry.grid(row=0, column=1, sticky="we", padx=5, pady=5)
+
+    tk.Label(pos_frame, text="OFFSET_Y:", font=font_norm).grid(row=0, column=2, sticky="e", padx=5, pady=5)
+    off_y_entry = tk.Entry(pos_frame, font=font_norm, justify="center")
+    off_y_entry.insert(0, str(OFFSET_Y))
+    off_y_entry.grid(row=0, column=3, sticky="we", padx=5, pady=5)
+
+    tk.Label(pos_frame, text="MARGIN_RIGHT:", font=font_norm).grid(row=1, column=0, sticky="e", padx=5, pady=5)
+    mar_r_entry = tk.Entry(pos_frame, font=font_norm, justify="center")
+    mar_r_entry.insert(0, str(MARGIN_RIGHT))
+    mar_r_entry.grid(row=1, column=1, sticky="we", padx=5, pady=5)
+
+    tk.Label(pos_frame, text="MARGIN_BOTTOM:", font=font_norm).grid(row=1, column=2, sticky="e", padx=5, pady=5)
+    mar_b_entry = tk.Entry(pos_frame, font=font_norm, justify="center")
+    mar_b_entry.insert(0, str(MARGIN_BOTTOM))
+    mar_b_entry.grid(row=1, column=3, sticky="we", padx=5, pady=5)
+
+    # Funkcje presetów
+    def load_preset(pid):
+        preset = cfg.get("PRESETS", {}).get(str(pid))
+        if preset:
+            off_x_entry.delete(0, tk.END)
+            off_x_entry.insert(0, str(preset["OFFSET_X"]))
+            off_y_entry.delete(0, tk.END)
+            off_y_entry.insert(0, str(preset["OFFSET_Y"]))
+            mar_r_entry.delete(0, tk.END)
+            mar_r_entry.insert(0, str(preset["MARGIN_RIGHT"]))
+            mar_b_entry.delete(0, tk.END)
+            mar_b_entry.insert(0, str(preset["MARGIN_BOTTOM"]))
+            messagebox.showinfo("Wczytano", f"Załadowano Preset {pid}", parent=root)
+
+    def save_preset(pid):
+        try:
+            preset = {
+                "OFFSET_X": int(off_x_entry.get()),
+                "OFFSET_Y": int(off_y_entry.get()),
+                "MARGIN_RIGHT": int(mar_r_entry.get()),
+                "MARGIN_BOTTOM": int(mar_b_entry.get())
+            }
+            if "PRESETS" not in cfg:
+                cfg["PRESETS"] = {}
+            cfg["PRESETS"][str(pid)] = preset
+            save_config(cfg)
+            messagebox.showinfo("Zapisano", f"Zapisano ustawienia na Preset {pid}", parent=root)
+        except ValueError:
+            messagebox.showerror("Błąd", "Marginesy muszą być liczbami całkowitymi!", parent=root)
+
+    # Frame na presety
+    preset_frame = tk.LabelFrame(main_frame, text=" Zapisane Presety marginesów ", font=font_bold, padx=10, pady=10)
+    preset_frame.pack(fill="x", pady=5)
     
+    # Wyśrodkowanie wewnątrz ramki poprzez kontener
+    preset_inner = tk.Frame(preset_frame)
+    preset_inner.pack(anchor="center")
+    
+    for i in range(1, 4):
+        p_sub = tk.Frame(preset_inner, padx=5)
+        p_sub.pack(side=tk.LEFT)
+        tk.Label(p_sub, text=f"Preset {i}", font=font_bold).pack(pady=(0, 2))
+        bb_frame = tk.Frame(p_sub)
+        bb_frame.pack()
+        
+        btn_load = tk.Button(bb_frame, text="Wczytaj", font=font_norm, width=8, command=lambda p=i: load_preset(p))
+        btn_load.pack(side=tk.LEFT, padx=2)
+        btn_load.bind("<Enter>", on_enter)
+        btn_load.bind("<Leave>", on_leave)
+        
+        btn_save = tk.Button(bb_frame, text="Zapisz", font=font_norm, width=8, command=lambda p=i: save_preset(p))
+        btn_save.pack(side=tk.LEFT, padx=2)
+        btn_save.bind("<Enter>", on_enter)
+        btn_save.bind("<Leave>", on_leave)
+
     def on_window_close():
         global options_open
         options_open = False
@@ -185,10 +299,20 @@ def open_options_dialog():
     
     def on_save():
         global STREAM_URL, HOTKEY_TOGGLE_STREAM, options_open
+        global OFFSET_X, OFFSET_Y, MARGIN_RIGHT, MARGIN_BOTTOM
         
         new_url = url_entry.get().strip()
         new_hotkey = hotkey_entry.get().strip()
         
+        try:
+            new_ox = int(off_x_entry.get())
+            new_oy = int(off_y_entry.get())
+            new_mr = int(mar_r_entry.get())
+            new_mb = int(mar_b_entry.get())
+        except ValueError:
+            messagebox.showerror("Błąd", "Marginesy i pozycje muszą być liczbami całkowitymi.", parent=root)
+            return
+
         if new_url:
             STREAM_URL = new_url
             
@@ -203,9 +327,15 @@ def open_options_dialog():
             except Exception as e:
                 messagebox.showerror("Błąd", f"Nie udało się ustawić skrótu {new_hotkey}:\n{e}")
                 
+        OFFSET_X, OFFSET_Y, MARGIN_RIGHT, MARGIN_BOTTOM = new_ox, new_oy, new_mr, new_mb
+                
         # Zapisanie do pliku
         cfg["STREAM_URL"] = STREAM_URL
         cfg["HOTKEY_TOGGLE_STREAM"] = HOTKEY_TOGGLE_STREAM
+        cfg["OFFSET_X"] = OFFSET_X
+        cfg["OFFSET_Y"] = OFFSET_Y
+        cfg["MARGIN_RIGHT"] = MARGIN_RIGHT
+        cfg["MARGIN_BOTTOM"] = MARGIN_BOTTOM
         save_config(cfg)
         
         log("Zapisano opcje z głównego okna.")
@@ -218,11 +348,27 @@ def open_options_dialog():
     root.protocol("WM_DELETE_WINDOW", on_window_close)
     
     btn_frame = tk.Frame(root)
-    btn_frame.pack(pady=20)
+    btn_frame.pack(pady=15)
     
-    tk.Button(btn_frame, text="Zapisz i Zrestartuj", command=on_save, bg="green", fg="white", width=20, font=("Arial", 10, "bold")).pack(side=tk.LEFT, padx=15)
-    tk.Button(btn_frame, text="Anuluj", command=on_cancel, width=15, font=("Arial", 10)).pack(side=tk.RIGHT, padx=15)
+    btn_save_main = tk.Button(btn_frame, text="Zapisz i Zrestartuj", command=on_save, bg="green", fg="white", width=20, font=("Arial", 10, "bold"))
+    btn_save_main.pack(side=tk.LEFT, padx=15)
+    btn_save_main.bind("<Enter>", on_enter)
+    btn_save_main.bind("<Leave>", on_leave)
     
+    btn_cancel = tk.Button(btn_frame, text="Anuluj", command=on_cancel, width=15, font=("Arial", 10))
+    btn_cancel.pack(side=tk.RIGHT, padx=15)
+    btn_cancel.bind("<Enter>", on_enter)
+    btn_cancel.bind("<Leave>", on_leave)
+    
+    # Dopasowanie rozmiarów okna do zawartości i wyśrodkowanie
+    root.update_idletasks()
+    width = max(580, root.winfo_reqwidth() + 20)
+    height = root.winfo_reqheight() + 10
+    x = (root.winfo_screenwidth() // 2) - (width // 2)
+    y = (root.winfo_screenheight() // 2) - (height // 2)
+    root.geometry(f'{width}x{height}+{x}+{y}')
+    
+    root.deiconify() # Pokazujemy raz od ręki w prawidłowym miejscu
     root.focus_force()
     root.mainloop()
 
@@ -412,11 +558,15 @@ def run_stream_cycle():
         viewer_process.terminate()
         return
 
-    log("Ustawiam Wlasciciela okna na Discorda...")
+    log("Ustawiam Wlasciciela okna na Discorda i ukrywam z paska zadan...")
     try:
+        ex_style = win32gui.GetWindowLong(viewer_hwnd, win32con.GWL_EXSTYLE)
+        new_ex_style = (ex_style | win32con.WS_EX_TOOLWINDOW) & ~win32con.WS_EX_APPWINDOW
+        win32gui.SetWindowLong(viewer_hwnd, win32con.GWL_EXSTYLE, new_ex_style)
+        
         win32gui.SetWindowLong(viewer_hwnd, win32con.GWL_HWNDPARENT, discord_hwnd)
     except Exception as e:
-        log(f"Blad przy SetWindowLong: {e}")
+        log(f"Blad przy modyfikacji okna: {e}")
     
     log("Gotowe. Stream dziala.")
     hide_console()
