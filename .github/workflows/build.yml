@@ -42,8 +42,7 @@ jobs:
           
       - name: Build with PyInstaller
         run: |
-          pyinstaller --noconfirm --onefile --windowed --icon=NONE --name "Discord_Stream_Overlay-${{ steps.get_version.outputs.VERSION }}-Windows-x86_64" embed_discord.py
-          
+          pyinstaller --noconfirm --onefile --windowed --icon="assets/icon.ico" --name "Discord_Stream_Overlay-${{ steps.get_version.outputs.VERSION }}-Windows-x86_64" embed_discord.py
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
