@@ -45,6 +45,8 @@ def save_config(cfg):
         pass
 
 cfg = load_config()
+if not os.path.exists(CONFIG_FILE):
+    save_config(cfg)
 
 STREAM_URL = cfg["STREAM_URL"]
 WINDOW_TITLE = cfg["WINDOW_TITLE"] 
@@ -63,7 +65,7 @@ MARGIN_BOTTOM = cfg["MARGIN_BOTTOM"]
 viewer_hwnd = None
 discord_hwnd = None
 visible = True
-console_visible = True
+console_visible = False
 restart_requested = False
 quit_requested = False
 options_open = False
@@ -318,7 +320,7 @@ html_content = """<!DOCTYPE html>
 
 try:
     api = Api()
-    window = webview.create_window("{WINDOW_TITLE}", html=html_content, frameless=True, background_color="#000000", js_api=api)
+    window = webview.create_window("{WINDOW_TITLE}", html=html_content, frameless=True, background_color="#000000", js_api=api, hidden=True)
     webview.start()
 except Exception as e:
     print(f"WEBVIEW ERROR: {{e}}")
@@ -348,9 +350,8 @@ def find_discord():
 def find_viewer_window():
     found_hwnds =[]
     def callback(hwnd, _):
-        if win32gui.IsWindowVisible(hwnd):
-            if win32gui.GetWindowText(hwnd) == WINDOW_TITLE:
-                found_hwnds.append(hwnd)
+        if win32gui.GetWindowText(hwnd) == WINDOW_TITLE:
+            found_hwnds.append(hwnd)
         return True
     win32gui.EnumWindows(callback, None)
     return found_hwnds[0] if found_hwnds else None
@@ -521,8 +522,6 @@ def main_loop_thread():
     keyboard.add_hotkey(HOTKEY_TOGGLE_STREAM, toggle_hide)
     
     time.sleep(1)
-    disable_close_button()
-    toggle_console() 
     
     try:
         while not quit_requested:
