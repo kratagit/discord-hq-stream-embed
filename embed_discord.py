@@ -16,8 +16,10 @@ import os
 import tempfile
 import webview
 
-# ================= KONFIGURACJA DOMYŚLNA =================
-CONFIG_FILE = "config.json"
+# ================= KONFIGURACJA =================
+APP_NAME = "Discord_Stream_Overlay"
+CONFIG_DIR = os.path.join(os.getenv('APPDATA'), APP_NAME) if os.name == 'nt' else os.path.join(os.path.expanduser("~"), "." + APP_NAME)
+CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
 
 def load_config():
     default_config = {
@@ -44,6 +46,7 @@ def load_config():
 
 def save_config(cfg):
     try:
+        os.makedirs(CONFIG_DIR, exist_ok=True)
         with open(CONFIG_FILE, "w", encoding="utf-8") as f:
             json.dump(cfg, f, indent=4)
     except Exception:
@@ -74,6 +77,7 @@ console_visible = False
 restart_requested = False
 quit_requested = False
 options_open = False
+options_root = None
 
 FS_FLAG = os.path.join(tempfile.gettempdir(), "discord_stream_fs.flag")
 
@@ -160,14 +164,13 @@ def get_resource_path(relative_path):
     return os.path.join(os.path.abspath("."), relative_path)
 
 def open_options_dialog():
-    global STREAM_URL, HOTKEY_TOGGLE_STREAM, toggle_hide, options_open
+    global STREAM_URL, HOTKEY_TOGGLE_STREAM, toggle_hide, options_open, options_root
     global OFFSET_X, OFFSET_Y, MARGIN_RIGHT, MARGIN_BOTTOM
     
-    if options_open:
-        return
     options_open = True
     
     root = tk.Tk()
+    options_root = root
     root.withdraw() # Ukrywamy na moment, by nie "skakało" przy tworzeniu i wyśrodkowywaniu
     root.title("Opcje (Ustawienia Strumienia)")
     root.resizable(False, False)
@@ -293,8 +296,9 @@ def open_options_dialog():
         btn_save.bind("<Leave>", on_leave)
 
     def on_window_close():
-        global options_open
+        global options_open, options_root
         options_open = False
+        options_root = None
         root.destroy()
     
     def on_save():
@@ -372,9 +376,21 @@ def open_options_dialog():
     root.focus_force()
     root.mainloop()
 
-def open_options(icon=None, item=None):
-    # Trzeba to uruchomić w nowym wątku, bo pystray blokuje główny loop
-    threading.Thread(target=open_options_dialog, daemon=True).start()
+def toggle_options(icon=None, item=None):
+    global options_open, options_root
+    if options_open and options_root:
+        # Pystray działa w innym wątku, więc niszczenie Tk bezpośrednio stąd
+        # paraliżuje główną aplikację (deadlock). Zlećmy to wewnątrz samego Tkintera:
+        try:
+            options_root.after(0, options_root.destroy)
+        except Exception:
+            pass
+        finally:
+            options_open = False
+            options_root = None
+    else:
+        # Otwiera okno ustawień w nowym wątku dla pystray
+        threading.Thread(target=open_options_dialog, daemon=True).start()
 
 def trigger_quit(icon=None, item=None):
     global quit_requested
@@ -702,7 +718,7 @@ if __name__ == "__main__":
 
     menu = pystray.Menu(
         pystray.MenuItem("Otwórz/Ukryj Logi", toggle_console, default=True),
-        pystray.MenuItem("Opcje (Ustawienia)", open_options),
+        pystray.MenuItem("Zamknij/Otwórz Ustawienia", toggle_options),
         pystray.MenuItem("Restart Stream", trigger_restart),
         pystray.MenuItem("Zakończ", trigger_quit)
     )
