@@ -2,6 +2,8 @@ config.json
 pyinstaller.txt
 TODO
 *.af*
+embed_discord_min.py
+upx.exe
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

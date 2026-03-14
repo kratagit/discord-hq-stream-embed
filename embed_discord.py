@@ -16,7 +16,7 @@ import os
 import tempfile
 import webview
 
-# ================= KONFIGURACJA =================
+# ================= CONFIGURATION =================
 APP_NAME = "Discord_Stream_Overlay"
 CONFIG_DIR = os.path.join(os.getenv('APPDATA'), APP_NAME) if os.name == 'nt' else os.path.join(os.path.expanduser("~"), "." + APP_NAME)
 CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
@@ -25,7 +25,7 @@ def load_config():
     default_config = {
         "STREAM_URL": "http://192.168.8.122:8889/stream_legionowo",
         "HOTKEY_TOGGLE_STREAM": "f7+f8",
-        "WINDOW_TITLE": "MOJ_STREAM",
+        "WINDOW_TITLE": "MY_STREAM",
         "OFFSET_X": 325,
         "OFFSET_Y": 38,
         "MARGIN_RIGHT": 8,
@@ -110,7 +110,7 @@ def toggle_console(icon=None, item=None):
             ctypes.windll.kernel32.AllocConsole()
             sys.stdout = open("CONOUT$", "w", encoding="utf-8")
             sys.stderr = open("CONOUT$", "w", encoding="utf-8")
-            ctypes.windll.kernel32.SetConsoleTitleW("Logi Discord Stream")
+            ctypes.windll.kernel32.SetConsoleTitleW("Logs")
             disable_close_button()
             hwnd = get_console_window()
             try:
@@ -118,7 +118,7 @@ def toggle_console(icon=None, item=None):
             except Exception:
                 pass
             console_visible = True
-            log("Konsola odtworzona.")
+            log("Console restored.")
         except Exception:
             pass
         return
@@ -137,7 +137,7 @@ def toggle_console(icon=None, item=None):
                 pass 
             console_visible = True
     except Exception as e:
-        log(f"Blad przelaczania okna: {e}")
+        log(f"Error toggling window: {e}")
 
 def hide_console():
     global console_visible
@@ -146,17 +146,17 @@ def hide_console():
         try:
             win32gui.ShowWindow(hwnd, win32con.SW_HIDE)
             console_visible = False
-            log("Zwijam konsole, stream nadaje ok.")
+            log("Hiding console, stream ok.")
         except Exception:
             pass
 
 def trigger_restart(icon=None, item=None):
     global restart_requested
-    log("!!! ZAZADANO RESTARTU Z MENU !!!")
+    log("!!! RESTART REQUESTED FROM MENU !!!")
     restart_requested = True
 
 def get_resource_path(relative_path):
-    """Zwraca ścieżkę do zasobów niezależnie od tego, czy program jest uruchomiony jako skrypt, czy jako skompilowany plik exe"""
+    """Returns resource path whether running as script or compiled exe"""
     import sys
     import os
     if hasattr(sys, '_MEIPASS'):
@@ -172,7 +172,7 @@ def open_options_dialog():
     root = tk.Tk()
     options_root = root
     root.withdraw() # Ukrywamy na moment, by nie "skakało" przy tworzeniu i wyśrodkowywaniu
-    root.title("Opcje (Ustawienia Strumienia)")
+    root.title("Options (Stream Settings)")
     root.resizable(False, False)
     root.attributes('-topmost', True) # Zawsze na wierzchu do czasu zamknięcia
     
@@ -203,19 +203,19 @@ def open_options_dialog():
         e.widget['cursor'] = ''
     
     # URL
-    tk.Label(main_frame, text="Adres strumienia (STREAM_URL):", font=font_bold).pack(anchor="w")
+    tk.Label(main_frame, text="Stream address (STREAM_URL):", font=font_bold).pack(anchor="w")
     url_entry = tk.Entry(main_frame, width=65, font=font_norm)
     url_entry.insert(0, STREAM_URL)
     url_entry.pack(fill="x", pady=(5, 15))
     
     # Hotkey
-    tk.Label(main_frame, text="Skrót do ukrywania okna (HOTKEY_TOGGLE_STREAM):", font=font_bold).pack(anchor="w")
+    tk.Label(main_frame, text="Shortcut to hide window (HOTKEY_TOGGLE_STREAM):", font=font_bold).pack(anchor="w")
     hotkey_entry = tk.Entry(main_frame, width=65, font=font_norm)
     hotkey_entry.insert(0, HOTKEY_TOGGLE_STREAM)
     hotkey_entry.pack(fill="x", pady=(5, 15))
 
     # Marginesy
-    pos_frame = tk.LabelFrame(main_frame, text=" Marginesy i Pozycja (Dostosowanie Okna) ", font=font_bold, padx=15, pady=10)
+    pos_frame = tk.LabelFrame(main_frame, text=" Margins and Position (Window Adjustment) ", font=font_bold, padx=15, pady=10)
     pos_frame.pack(fill="x", pady=(5, 10))
     pos_frame.columnconfigure(1, weight=1)
     pos_frame.columnconfigure(3, weight=1)
@@ -252,7 +252,7 @@ def open_options_dialog():
             mar_r_entry.insert(0, str(preset["MARGIN_RIGHT"]))
             mar_b_entry.delete(0, tk.END)
             mar_b_entry.insert(0, str(preset["MARGIN_BOTTOM"]))
-            messagebox.showinfo("Wczytano", f"Załadowano Preset {pid}", parent=root)
+            messagebox.showinfo("Loaded", f"Loaded Preset {pid}", parent=root)
 
     def save_preset(pid):
         try:
@@ -266,12 +266,12 @@ def open_options_dialog():
                 cfg["PRESETS"] = {}
             cfg["PRESETS"][str(pid)] = preset
             save_config(cfg)
-            messagebox.showinfo("Zapisano", f"Zapisano ustawienia na Preset {pid}", parent=root)
+            messagebox.showinfo("Saved", f"Saved settings to Preset {pid}", parent=root)
         except ValueError:
-            messagebox.showerror("Błąd", "Marginesy muszą być liczbami całkowitymi!", parent=root)
+            messagebox.showerror("Error", "Margins must be integers!", parent=root)
 
     # Frame na presety
-    preset_frame = tk.LabelFrame(main_frame, text=" Zapisane Presety marginesów ", font=font_bold, padx=10, pady=10)
+    preset_frame = tk.LabelFrame(main_frame, text=" Saved Margin Presets ", font=font_bold, padx=10, pady=10)
     preset_frame.pack(fill="x", pady=5)
     
     # Wyśrodkowanie wewnątrz ramki poprzez kontener
@@ -285,12 +285,12 @@ def open_options_dialog():
         bb_frame = tk.Frame(p_sub)
         bb_frame.pack()
         
-        btn_load = tk.Button(bb_frame, text="Wczytaj", font=font_norm, width=8, command=lambda p=i: load_preset(p))
+        btn_load = tk.Button(bb_frame, text="Load", font=font_norm, width=8, command=lambda p=i: load_preset(p))
         btn_load.pack(side=tk.LEFT, padx=2)
         btn_load.bind("<Enter>", on_enter)
         btn_load.bind("<Leave>", on_leave)
         
-        btn_save = tk.Button(bb_frame, text="Zapisz", font=font_norm, width=8, command=lambda p=i: save_preset(p))
+        btn_save = tk.Button(bb_frame, text="Save", font=font_norm, width=8, command=lambda p=i: save_preset(p))
         btn_save.pack(side=tk.LEFT, padx=2)
         btn_save.bind("<Enter>", on_enter)
         btn_save.bind("<Leave>", on_leave)
@@ -314,7 +314,7 @@ def open_options_dialog():
             new_mr = int(mar_r_entry.get())
             new_mb = int(mar_b_entry.get())
         except ValueError:
-            messagebox.showerror("Błąd", "Marginesy i pozycje muszą być liczbami całkowitymi.", parent=root)
+            messagebox.showerror("Error", "Margins and positions must be integers.", parent=root)
             return
 
         if new_url:
@@ -329,7 +329,7 @@ def open_options_dialog():
             try:
                 keyboard.add_hotkey(HOTKEY_TOGGLE_STREAM, toggle_hide)
             except Exception as e:
-                messagebox.showerror("Błąd", f"Nie udało się ustawić skrótu {new_hotkey}:\n{e}")
+                messagebox.showerror("Error", f"Failed to set shortcut {new_hotkey}:\n{e}")
                 
         OFFSET_X, OFFSET_Y, MARGIN_RIGHT, MARGIN_BOTTOM = new_ox, new_oy, new_mr, new_mb
                 
@@ -342,7 +342,7 @@ def open_options_dialog():
         cfg["MARGIN_BOTTOM"] = MARGIN_BOTTOM
         save_config(cfg)
         
-        log("Zapisano opcje z głównego okna.")
+        log("Saved options from main window.")
         on_window_close()
         trigger_restart()
 
@@ -354,12 +354,12 @@ def open_options_dialog():
     btn_frame = tk.Frame(root)
     btn_frame.pack(pady=15)
     
-    btn_save_main = tk.Button(btn_frame, text="Zapisz i Zrestartuj", command=on_save, bg="green", fg="white", width=20, font=("Arial", 10, "bold"))
+    btn_save_main = tk.Button(btn_frame, text="Save and Restart", command=on_save, bg="green", fg="white", width=20, font=("Arial", 10, "bold"))
     btn_save_main.pack(side=tk.LEFT, padx=15)
     btn_save_main.bind("<Enter>", on_enter)
     btn_save_main.bind("<Leave>", on_leave)
     
-    btn_cancel = tk.Button(btn_frame, text="Anuluj", command=on_cancel, width=15, font=("Arial", 10))
+    btn_cancel = tk.Button(btn_frame, text="Cancel", command=on_cancel, width=15, font=("Arial", 10))
     btn_cancel.pack(side=tk.RIGHT, padx=15)
     btn_cancel.bind("<Enter>", on_enter)
     btn_cancel.bind("<Leave>", on_leave)
@@ -394,7 +394,7 @@ def toggle_options(icon=None, item=None):
 
 def trigger_quit(icon=None, item=None):
     global quit_requested
-    log("!!! KONCZENIE PRACY !!!")
+    log("!!! QUITTING !!!")
     quit_requested = True
     if icon:
         icon.stop()
@@ -443,7 +443,7 @@ html_content = """<!DOCTYPE html>
         .container {{ position: relative; width: 100%; height: 100%; }}
         iframe {{ width: 100%; height: 100%; border: none; }}
         
-        /* TARCZA: blokuje klikanie na środku obrazu, zostawiając 52px luzu na dole na przyciski play/pause/fullscreen */
+        /* SHIELD: blocks clicking in the center of the image, leaving 52px at the bottom for play/pause/fullscreen buttons */
         .click-shield {{
             position: absolute;
             top: 0;
@@ -458,7 +458,7 @@ html_content = """<!DOCTYPE html>
     <div class="container">
         <iframe src="{STREAM_URL}" allow="autoplay; fullscreen; camera; microphone" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"></iframe>
         
-        <!-- Warstwa wchłaniająca kliknięcia -->
+        <!-- Click absorbing layer -->
         <div class="click-shield" oncontextmenu="return false;"></div>
     </div>
 
@@ -473,7 +473,7 @@ html_content = """<!DOCTYPE html>
                 }}
             }}
         }}
-        // Reakcja na natywne zdarzenia WebView i zapasowy polling
+        // Reaction to native WebView events and fallback polling
         document.addEventListener('fullscreenchange', checkFs);
         setInterval(checkFs, 200);
     </script>
@@ -535,7 +535,7 @@ def run_stream_cycle():
     viewer_hwnd = None
     is_currently_fs = False
     
-    log("=== START CYKLU (WHEP PURE WEBVIEW) ===")
+    log("=== START CYCLE (WHEP PURE WEBVIEW) ===")
     kill_old_viewers()
     time.sleep(0.5)
 
@@ -543,17 +543,17 @@ def run_stream_cycle():
         try: os.remove(FS_FLAG)
         except: pass
 
-    log("Szukam Discorda...")
+    log("Searching for Discord...")
     discord_hwnd = find_discord()
     if not discord_hwnd:
-        log("BLAD: Nie znaleziono Discorda. Czekam 5 sekund...")
+        log("ERROR: Discord not found. Waiting 5 seconds...")
         time.sleep(5)
         return 
 
-    log(f"Discord ID: {discord_hwnd}. Generuje mini-skrypt playera...")
+    log(f"Discord ID: {discord_hwnd}. Generating mini-script player...")
     viewer_script = create_webview_script()
     
-    log("Otwieram proces strumienia...")
+    log("Opening stream process...")
     viewer_process = subprocess.Popen([sys.executable, viewer_script], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
     attempts = 0
@@ -562,7 +562,7 @@ def run_stream_cycle():
         if viewer_process.poll() is not None:
             out, _ = viewer_process.communicate()
             error_text = out.decode('utf-8', errors='ignore').strip()
-            log(f"CRASH: Skrypt przegladarki umarl natychmiast! Powod:\n{error_text}")
+            log(f"CRASH: Browser script died immediately! Reason:\n{error_text}")
             time.sleep(5) 
             return
 
@@ -570,11 +570,11 @@ def run_stream_cycle():
         attempts += 1
     
     if not viewer_hwnd:
-        log("BLAD: Okno WebView nie powstalo przez 20 sekund.")
+        log("ERROR: WebView window did not appear for 20 seconds.")
         viewer_process.terminate()
         return
 
-    log("Ustawiam Wlasciciela okna na Discorda i ukrywam z paska zadan...")
+    log("Setting window owner to Discord and hiding from taskbar...")
     try:
         ex_style = win32gui.GetWindowLong(viewer_hwnd, win32con.GWL_EXSTYLE)
         new_ex_style = (ex_style | win32con.WS_EX_TOOLWINDOW) & ~win32con.WS_EX_APPWINDOW
@@ -582,70 +582,70 @@ def run_stream_cycle():
         
         win32gui.SetWindowLong(viewer_hwnd, win32con.GWL_HWNDPARENT, discord_hwnd)
     except Exception as e:
-        log(f"Blad przy modyfikacji okna: {e}")
+        log(f"Error during window modification: {e}")
     
-    log("Gotowe. Stream dziala.")
+    log("Done. Stream is running.")
     hide_console()
 
     while viewer_process.poll() is None:
         if quit_requested or restart_requested:
-            if quit_requested: log("Zamykam strumien (Quit)...")
-            else: log("Restartuje proces Playera...")
+            if quit_requested: log("Closing stream (Quit)...")
+            else: log("Restarting Player process...")
             try: viewer_process.terminate() 
             except: pass
             kill_old_viewers()
             return
 
         if not win32gui.IsWindow(discord_hwnd):
-            log("Discord zamkniety.")
+            log("Discord closed.")
             try: viewer_process.terminate() 
             except: pass
             kill_old_viewers()
             return
 
         # ========================================
-        # BEZPIECZNA LOGIKA PEŁNEGO EKRANU
+        # SAFE FULLSCREEN LOGIC
         # ========================================
         is_fs_now = os.path.exists(FS_FLAG)
         
         if is_fs_now:
             if not is_currently_fs:
                 is_currently_fs = True
-                log("Wykryto Pełny Ekran! Odpinam WebView od Discorda.")
+                log("Fullscreen detected! Detaching WebView from Discord.")
                 
-                # Zdejmujemy wlasciciela (Discord), aby okno mogło zakryć cały ekran niezależnie
+                # Removing owner (Discord) so window can cover full screen independently
                 win32gui.SetWindowLong(viewer_hwnd, win32con.GWL_HWNDPARENT, 0)
                 
-                # Dynamicznie sprawdzamy na którym monitorze jest obecnie aplikacja
+                # Dynamically checking which monitor the app is on
                 try:
-                    # 2 to wartość stałej win32con.MONITOR_DEFAULTTONEAREST
+                    # 2 is the value of win32con.MONITOR_DEFAULTTONEAREST
                     monitor = win32api.MonitorFromWindow(discord_hwnd, 2)
                     monitor_info = win32api.GetMonitorInfo(monitor)
                     m_rect = monitor_info['Monitor']
                     m_x, m_y, m_w, m_h = m_rect[0], m_rect[1], m_rect[2] - m_rect[0], m_rect[3] - m_rect[1]
                 except Exception:
-                    # Awaryjnie Główny Monitor
+                    # Fallback to Primary Monitor
                     m_x, m_y = 0, 0
                     m_w = win32api.GetSystemMetrics(win32con.SM_CXSCREEN)
                     m_h = win32api.GetSystemMetrics(win32con.SM_CYSCREEN)
 
-                # Wymuszamy nakładkę na cały ekran
+                # Forcing full screen overlay
                 win32gui.SetWindowPos(viewer_hwnd, win32con.HWND_TOPMOST, m_x, m_y, m_w, m_h, win32con.SWP_SHOWWINDOW)
             
-            # Gdy ekran jest pełny, 'continue' pomija kod dopasowujący rozmiar pod Discorda
+            # When fullscreen, 'continue' skips resizing code for Discord
             time.sleep(0.05)
             continue
         else:
             if is_currently_fs:
                 is_currently_fs = False
-                log("Wyłączono Pełny Ekran. Przypinam z powrotem do Discorda.")
-                # Przywracamy nakładkę do okna Discorda
+                log("Fullscreen disabled. Reattaching to Discord.")
+                # Restoring overlay to Discord window
                 win32gui.SetWindowLong(viewer_hwnd, win32con.GWL_HWNDPARENT, discord_hwnd)
-                # Ściągamy wymuszenie najwyższej warstwy TOPMOST
+                # Removing TOPMOST constraint
                 win32gui.SetWindowPos(viewer_hwnd, win32con.HWND_NOTOPMOST, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
 
 
-        # Standardowa logika pozycjonowania odtwarzacza w Discordzie
+        # Standard logic for positioning player in Discord
         if win32gui.IsIconic(discord_hwnd):
             if win32gui.IsWindowVisible(viewer_hwnd):
                 win32gui.ShowWindow(viewer_hwnd, win32con.SW_HIDE)
@@ -704,8 +704,8 @@ def main_loop_thread():
 
 if __name__ == "__main__":
     import sys
-    # --- FIX PyInstaller "Bomba procesów" (Fork Bomb) ---
-    # Jeżeli PyInstaller uruchomi ten plik .exe z argumentem do skryptu webview, wykonaj po prostu go i wyjdź!
+    # --- FIX PyInstaller Fork Bomb ---
+    # If PyInstaller runs this .exe with webview script argument, execute it and exit!
     if len(sys.argv) > 1 and sys.argv[1].endswith("whep_viewer.py"):
         with open(sys.argv[1], "r", encoding="utf-8") as f:
             code = f.read()
@@ -717,16 +717,16 @@ if __name__ == "__main__":
     t.start()
 
     menu = pystray.Menu(
-        pystray.MenuItem("Otwórz/Ukryj Logi", toggle_console, default=True),
-        pystray.MenuItem("Zamknij/Otwórz Ustawienia", toggle_options),
+        pystray.MenuItem("Show/Hide Logs", toggle_console, default=True),
+        pystray.MenuItem("Close/Open Settings", toggle_options),
         pystray.MenuItem("Restart Stream", trigger_restart),
-        pystray.MenuItem("Zakończ", trigger_quit)
+        pystray.MenuItem("Quit", trigger_quit)
     )
 
     icon = pystray.Icon("DiscordStream", create_tray_icon(), "Discord Stream Overlay", menu)
     
-    print("Aplikacja uruchomiona. Sprawdz pasek zadan (tray).")
+    print("App running. Check taskbar (tray).")
     try:
         icon.run()
     except Exception as e:
-        print(f"Blad ikony tray: {e}")
+        print(f"Tray icon error: {e}")
