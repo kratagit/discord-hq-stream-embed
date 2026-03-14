@@ -13,6 +13,8 @@ jobs:
   build:
     name: Build Windows EXE
     runs-on: windows-latest
+    env:
+      PYTHONUTF8: 1
     permissions:
       contents: write
     
@@ -28,17 +30,13 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pyinstaller python-minifier
+          pip install pyinstaller
           pip install -r requirements.txt
 
       - name: Install UPX
         uses: crazy-max/ghaction-upx@v3
         with:
           install-only: true
-          
-      - name: Minify Code
-        run: |
-          pyminify embed_discord.py --output embed_discord_min.py
           
       - name: Get tag version
         id: get_version
@@ -51,7 +49,7 @@ jobs:
           
       - name: Build with PyInstaller
         run: |
-          pyinstaller --noconfirm --onefile --windowed --icon="assets/icon.ico" --exclude-module "numpy" --exclude-module "pandas" --exclude-module "unittest" --exclude-module "pydoc" --exclude-module "xml" --name "Discord_Stream_Overlay-${{ steps.get_version.outputs.VERSION }}-Windows-x86_64" embed_discord_min.py
+          pyinstaller --noconfirm --onefile --windowed --icon="assets/icon.ico" --exclude-module "numpy" --exclude-module "pandas" --exclude-module "unittest" --exclude-module "pydoc" --exclude-module "xml" --name "Discord_Stream_Overlay-${{ steps.get_version.outputs.VERSION }}-Windows-x86_64" embed_discord.py
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
