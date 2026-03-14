@@ -9,7 +9,7 @@ import threading
 import ctypes
 import json
 import tkinter as tk
-from tkinter import simpledialog, messagebox
+from tkinter import messagebox
 from PIL import Image, ImageDraw
 import pystray
 import os
@@ -74,7 +74,6 @@ MARGIN_BOTTOM = cfg["MARGIN_BOTTOM"]
 viewer_hwnd = None
 discord_hwnd = None
 visible = True
-console_visible = False
 restart_requested = False
 quit_requested = False
 options_open = False
@@ -149,69 +148,6 @@ def is_parent_process_alive(parent_pid):
     except Exception:
         return True
 
-def get_console_window():
-    return ctypes.windll.kernel32.GetConsoleWindow()
-
-def disable_close_button():
-    try:
-        hwnd = get_console_window()
-        if hwnd:
-            hMenu = win32gui.GetSystemMenu(hwnd, False)
-            if hMenu:
-                win32gui.DeleteMenu(hMenu, win32con.SC_CLOSE, win32con.MF_BYCOMMAND)
-                win32gui.DrawMenuBar(hwnd)
-    except Exception:
-        pass 
-
-def toggle_console(icon=None, item=None):
-    global console_visible
-    hwnd = get_console_window()
-    
-    if not hwnd or hwnd == 0:
-        try:
-            ctypes.windll.kernel32.AllocConsole()
-            sys.stdout = open("CONOUT$", "w", encoding="utf-8")
-            sys.stderr = open("CONOUT$", "w", encoding="utf-8")
-            ctypes.windll.kernel32.SetConsoleTitleW("Logs")
-            disable_close_button()
-            hwnd = get_console_window()
-            try:
-                win32gui.SetWindowPos(hwnd, win32con.HWND_TOP, 100, 100, 900, 600, 0x0040)
-            except Exception:
-                pass
-            console_visible = True
-            log("Console restored.")
-        except Exception:
-            pass
-        return
-
-    try:
-        if console_visible:
-            win32gui.ShowWindow(hwnd, win32con.SW_HIDE)
-            console_visible = False
-        else:
-            win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
-            disable_close_button()
-            try:
-                win32gui.SetWindowPos(hwnd, win32con.HWND_TOP, 100, 100, 900, 600, 0x0040)
-                win32gui.SetForegroundWindow(hwnd)
-            except Exception:
-                pass 
-            console_visible = True
-    except Exception as e:
-        log(f"Error toggling window: {e}")
-
-def hide_console():
-    global console_visible
-    hwnd = get_console_window()
-    if hwnd and console_visible:
-        try:
-            win32gui.ShowWindow(hwnd, win32con.SW_HIDE)
-            console_visible = False
-            log("Hiding console, stream ok.")
-        except Exception:
-            pass
-
 def trigger_restart(icon=None, item=None):
     global restart_requested
     log("!!! RESTART REQUESTED FROM MENU !!!")
@@ -230,14 +166,12 @@ def trigger_global_shutdown(reason=""):
 
 def get_resource_path(relative_path):
     """Returns resource path whether running as script or compiled exe"""
-    import sys
-    import os
     if hasattr(sys, '_MEIPASS'):
         return os.path.join(sys._MEIPASS, relative_path)
     return os.path.join(os.path.abspath("."), relative_path)
 
 def open_options_dialog():
-    global STREAM_URL, HOTKEY_TOGGLE_STREAM, toggle_hide, options_open, options_root
+    global STREAM_URL, HOTKEY_TOGGLE_STREAM, options_open, options_root
     global OFFSET_X, OFFSET_Y, MARGIN_RIGHT, MARGIN_BOTTOM
     
     options_open = True
@@ -815,7 +749,6 @@ def main_loop_thread():
         os._exit(0)
 
 if __name__ == "__main__":
-    import sys
     suppress_console_output()
 
     # --- FIX PyInstaller Fork Bomb ---
