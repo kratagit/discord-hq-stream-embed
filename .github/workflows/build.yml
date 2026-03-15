@@ -18,6 +18,7 @@ jobs:
     runs-on: windows-latest
     env:
       PYTHONUTF8: 1
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     
     steps:
       - name: Checkout Code
@@ -26,7 +27,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: '3.13'
           
       - name: Install Dependencies
         run: |
@@ -67,9 +68,10 @@ jobs:
 
   build-linux:
     name: Build Linux Binary
-    runs-on: ubuntu-22.04 # Zmiana z wycofanego stabilnego 20.04 na dostępny stabilny 22.04 LTS
+    runs-on: ubuntu-22.04
     env:
       PYTHONUTF8: 1
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     
     steps:
       - name: Checkout Code
@@ -78,7 +80,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: '3.13'
           
       - name: Install Dependencies
         run: |
@@ -86,10 +88,11 @@ jobs:
           pip install pyinstaller
           pip install -r requirements.txt
 
-      - name: Install UPX
-        uses: crazy-max/ghaction-upx@v3
-        with:
-          install-only: true
+      - name: Print Build Environment
+        run: |
+          python -VV
+          pyinstaller --version
+          uname -a
           
       - name: Get tag version
         id: get_version
@@ -100,7 +103,28 @@ jobs:
           
       - name: Build with PyInstaller
         run: |
-          pyinstaller --noconfirm --onefile --windowed --name "Discord_Stream_Overlay-${{ steps.get_version.outputs.VERSION }}-Linux-x86_64" --exclude-module "tkinter" --exclude-module "pystray" --exclude-module "PIL" --exclude-module "win32gui" --exclude-module "pywebview" --exclude-module "win32con" --exclude-module "win32api" --exclude-module "webview" --exclude-module "numpy" --exclude-module "pandas" --exclude-module "unittest" --exclude-module "pydoc" --exclude-module "xml" embed_linux.py
+          pyinstaller --noconfirm --onefile --windowed \
+            --add-data "assets/icon.png:assets" \
+            --name "Discord_Stream_Overlay-${{ steps.get_version.outputs.VERSION }}-Linux-x86_64" \
+            --exclude-module "tkinter" \
+            --exclude-module "pystray" \
+            --exclude-module "PIL" \
+            --exclude-module "win32gui" \
+            --exclude-module "pywebview" \
+            --exclude-module "win32con" \
+            --exclude-module "win32api" \
+            --exclude-module "webview" \
+            --exclude-module "numpy" \
+            --exclude-module "pandas" \
+            --exclude-module "unittest" \
+            --exclude-module "pydoc" \
+            --exclude-module "xml" \
+            embed_linux.py
+
+      - name: Print Linux Artifact Size
+        run: |
+          ls -lh "dist/Discord_Stream_Overlay-${{ steps.get_version.outputs.VERSION }}-Linux-x86_64"
+          stat --printf='%n %s bytes\n' "dist/Discord_Stream_Overlay-${{ steps.get_version.outputs.VERSION }}-Linux-x86_64"
 
       - name: Upload Linux Binary to Release
         uses: softprops/action-gh-release@v1
