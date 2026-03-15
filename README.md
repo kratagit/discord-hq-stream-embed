@@ -75,7 +75,7 @@ Since the app now uses a Webview element, the streamer needs to host a web-compa
 *   **OBS-WebRTC Plugin**: For ultra-low latency streaming directly from OBS to a browser source.
 *   **Nginx-RTMP**: Pushing OBS to a local server that provides an HLS output.
 
-Once the streaming server is set up, the streamer will provide you with an `http://...` URL that you can simply paste into your **Options** menu.
+Once the streaming server is set up, the streamer will provide you with an `http://192.168.8.122:8889/stream/whip?buffer=0` URL that you can simply paste into your **Options** menu.
 
 ---
 

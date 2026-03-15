@@ -1,6 +1,6 @@
 config.json
 pyinstaller.txt
-TODO
+TODO*
 *.af*
 embed_discord_min.py
 upx.exe
