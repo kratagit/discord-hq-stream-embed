@@ -15,7 +15,6 @@ CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
 def load_config():
     default_config = {
         "STREAM_URL": "http://192.168.8.122:8889/stream",
-        "WINDOW_TITLE": "MY_STREAM",
         "WINDOW_WIDTH": 1280,
         "WINDOW_HEIGHT": 720
     }
@@ -48,21 +47,28 @@ def save_config(cfg):
 
 def find_chromium_based_browser():
     """Szuka zainstalowanej przeglądarki opartej na Chromium, bo one obsługują tryb --app."""
-    browsers = [
-        'google-chrome', 'google-chrome-stable', 'chromium', 'chromium-browser',
-        'brave', 'brave-browser', 'microsoft-edge-stable', 'vivaldi'
-    ]
-    for b in browsers:
-        path = shutil.which(b)
+    browsers = {
+        'google-chrome': 'Google Chrome',
+        'google-chrome-stable': 'Google Chrome',
+        'chromium': 'Chromium',
+        'chromium-browser': 'Chromium',
+        'brave': 'Brave',
+        'brave-browser': 'Brave',
+        'microsoft-edge-stable': 'Microsoft Edge',
+        'vivaldi': 'Vivaldi'
+    }
+    for cmd, name in browsers.items():
+        path = shutil.which(cmd)
         if path:
-            return path
-    return None
+            return path, name
+    return None, None
 
-def create_local_html_player(stream_url):
-    """Tworzy tymczasowy plik HTML, który osadza stream i dodaje niewidzialną warstwę blokującą kliknięcia."""
+def create_local_html_player(stream_url, window_title):
+    """Tworzy tymczasowy plik HTML, który osadza stream, dodaje niewidzialną warstwę blokującą kliknięcia wideo oraz ustawia tytuł taga <title>."""
     html_content = f"""<!DOCTYPE html>
 <html>
 <head>
+    <title>{window_title}</title>
     <style>
         body, html {{ margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #000; }}
         .container {{ position: relative; width: 100%; height: 100%; }}
@@ -151,18 +157,27 @@ def main():
         sys.exit(0)
 
     STREAM_URL = cfg.get("STREAM_URL", "http://192.168.8.122:8889/stream")
-    WINDOW_TITLE = cfg.get("WINDOW_TITLE", "Stream Viewer")
     WINDOW_WIDTH = cfg.get("WINDOW_WIDTH", 1280)
     WINDOW_HEIGHT = cfg.get("WINDOW_HEIGHT", 720)
 
-    browser_path = find_chromium_based_browser()
+    browser_path, browser_name = find_chromium_based_browser()
     
     if browser_path:
-        print(f"Znaleziono przeglądarkę: {browser_path}")
+        print(f"Znaleziono przeglądarkę: {browser_name} ({browser_path})")
         print(f"Uruchamiam strumień: {STREAM_URL}")
         
-        # Tworzymy lokalny plik HTML z załączonym streamem i tarczą na kliknięcia
-        local_player_url = create_local_html_player(STREAM_URL)
+        # Ustalamy nazwę uruchomionego pliku (jeśli z AppImage, wyciągamy prawidłową nazwę paczki)
+        appimage_path = os.environ.get("APPIMAGE")
+        if appimage_path:
+            app_name = os.path.basename(appimage_path)
+        else:
+            app_name = os.path.basename(sys.argv[0])
+            
+        # Konstruujemy dynamiczny tytuł: NazwaAplikacji - STREAM_URL (via Przeglądarka)
+        full_title = f"{app_name} - {STREAM_URL} (via {browser_name})"
+        
+        # Tworzymy lokalny plik HTML z załączonym streamem i tarczą na kliknięcia, wgrywając nasz tytuł
+        local_player_url = create_local_html_player(STREAM_URL, full_title)
         
         # Definiujemy czysty profil dla przeglądarki (żeby wtyczki takie jak LetyShops się nie ładowały)
         profile_dir = os.path.join(CONFIG_DIR, "browser_profile")
