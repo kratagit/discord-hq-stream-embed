@@ -1,88 +1,87 @@
-﻿# Discord Stream Overlay
+﻿# 📺 Discord Stream Overlay
 
-This tool allows you to watch streams directly over your Discord window. It behaves like a native overlay, replacing the standard Discord stream view with a high-performance web-based player that "sticks" to your Discord window.
+Lekkie i intuicyjne narzędzie pozwalające na oglądanie streamów z ultra niskim opóźnieniem (**< 100ms**). 
 
-### 🚀 Features
-*   **Webview-based Player**: Directly load stream URLs (HTTP, WebRTC, HLS, etc.) without needing external players like MPV.
-*   **System Tray Integration**: Runs quietly in the background with a convenient system tray menu.
-*   **GUI Settings**: Manage your stream URL, hotkeys, and overlay margins easily from an intuitive UI—no script editing required.
-*   **Margin Presets**: Save and load up to 3 custom layout presets to quickly adjust to different Discord server views.
-*   **Seamless Overlay**: The video window automatically attaches to Discord. If you move or resize Discord, the stream follows perfectly.
-*   **Global Hotkey Toggle**: Easily hide or show the stream overlay with a quick key combination (default: `F7 + F8`).
-*   **Standalone Executable Support**: Can be compiled into a single `.exe` using PyInstaller for zero-setup execution.
+Aplikacja pozwala na „przyklejenie” podglądu wideo bezpośrednio do okna Discorda w systemach Windows (10/11) lub wyświetlenie go w dedykowanym, czystym oknie na systemach Linux. Strumień wideo pobierany jest bezpośrednio od streamera korzystającego z OBS i protokołu WHIP (WebRTC) / HLS.
 
 ---
 
-## 🛠️ Prerequisites
-
-If you plan to run the app from the source code:
-1.  **Windows 10 or 11**.
-2.  **Python 3.x** installed ([Download here](https://www.python.org/downloads/)).
-3.  **Git** (optional, to clone the repo).
-
-*(If you are using a pre-compiled `.exe` release, you don't need Python installed!)*
+## ✨ Główne funkcje
+- **Ultra niskie opóźnienie** (<100ms) dzięki obsłudze nowoczesnych protokołów.
+- **Windows**: Inteligentny overlay renderowany bezpośrednio nad oknem Discorda.
+- **Linux**: Dedykowany tryb aplikacji (`--app`) w oparciu o silnik Chromium (czyste okno, bez interfejsu przeglądarki).
+- **Zoptymalizowany interfejs**: Izolowane profile przeglądarki i wbudowana "tarcza" (click-shield) zapobiegająca przypadkowemu pauzowaniu wideo.
 
 ---
 
-## 📥 Installation & Setup
+## 🚀 Szybki start (dla widza)
 
-### Option 1: Running from Source
-1. Clone this repository or download it as a ZIP and extract it.
-2. Open a terminal (Command Prompt/PowerShell) in the project folder and run:
-   `ash
-   pip install -r requirements.txt
-   `
-3. Run the application:
-   `ash
-   python embed_discord.py
-   `
+### 🪟 Windows (10 / 11)
 
-### Option 2: Building an Executable
-To create a standalone `.exe` file that doesn't require Python:
-1. Ensure dependencies are installed (`pip install -r requirements.txt`).
-2. Run the provided PyInstaller command (or execute it from `pyinstaller.txt`):
-   `ash
-   pyinstaller --noconfirm --onefile --windowed --icon="assets/icon.ico" --name "Discord_Stream_Overlay" embed_discord.py
-   `
-3. Your compiled app will be located in the `dist/` folder.
+1. Pobierz najnowszą wersję `.exe` z zakładki **[Releases](../../releases)**.
+2. Uruchom pobrany plik `Discord_Stream_Overlay.exe`.
+3. Otwórz aplikację Discord.
+4. W zasobniku systemowym (obok zegara) znajdź ikonę aplikacji, kliknij ją prawym przyciskiem myszy i wybierz **Options**.
+5. Wklej link otrzymany od streamera w polu **Stream URL** i kliknij **Save**.
+6. Gdy streamer rozpocznie nadawanie, obraz pojawi się automatycznie na Twoim Discordzie!
 
----
+> **Uwaga:** Przy pierwszym uruchomieniu filtr Windows SmartScreen może zablokować aplikację. Należy kliknąć *„Więcej informacji”* -> *„Uruchom mimo to”*.
 
-## ⚙️ Configuration
+### 🐧 Linux
 
-No need to edit python files anymore! All configuration is handled through the Graphical User Interface.
+Wersja na systemy Linux działa jako samodzielna, minimalistyczna aplikacja internetowa z wykorzystaniem silnika Chromium. 
 
-1.  **Start the app**. You will see a new icon appear in your Windows System Tray (bottom right corner).
-2.  **Right-click the tray icon** and select **"Options"**.
-3.  **Stream URL**: Enter the web player or stream URL provided by your friend (e.g., `http://192.168.8.122:8889/stream`).
-4.  **Offsets & Margins**: Adjust the values so the stream doesn't overlap with your Discord servers, friend list, or chat.
-    *   `Offset X`: Space from the left edge of Discord.
-    *   `Offset Y`: Space from the top edge.
-    *   `Margin Right`: Space pushing in from the right edge.
-    *   `Margin Bottom`: Space pushing up from the bottom edge.
-5.  **Presets**: Use the `Load 1/2/3` and `Save 1/2/3` buttons to quick-swap between margin setups.
-6.  **Hotkey**: Set a custom keybind (e.g. `f7+f8`) to hide/show the overlay instantly.
-7.  Click **Save**. The overlay will restart and apply your settings.
+1. Pobierz plik wykonywalny dla systemu Linux (np. AppImage) z zakładki **[Releases](../../releases)**.
+2. Nadaj mu prawa do wykonywania: `chmod +x discord_stream_overlay-linux`.
+3. Skonfiguruj lub uruchom stream prosto z terminala:
 
-*(Configuration is safely stored in `%APPDATA%\Discord_Stream_Overlay\config.json`)*
+```bash
+# Uruchomienie z konkretnym linkiem i rozmiarem okna
+./discord_stream_overlay-linux http://link-do-streamu/stream 1280 720
+
+# Zapisanie samej konfiguracji (bez uruchamiania)
+./discord_stream_overlay-linux http://link-do-streamu/stream --save-only
+```
+4. Przy kolejnych uruchomieniach wystarczy kliknąć plik dwukrotnie (lub uruchomić bez argumentów) – aplikacja zapamięta ostatnie ustawienia.
 
 ---
 
-## 🎥 OBS Settings (For the Streamer)
+## 🛠️ Konfiguracja i działanie
 
-Since the app now uses a Webview element, the streamer needs to host a web-compatible stream. Common solutions include:
-*   **MediaMTX**: To serve WebRTC / HLS streams directly.
-*   **OBS-WebRTC Plugin**: For ultra-low latency streaming directly from OBS to a browser source.
-*   **Nginx-RTMP**: Pushing OBS to a local server that provides an HLS output.
+### Windows (GUI w trayu)
+- **Stream URL** - Adres sieciowy strumienia.
+- **Offset X / Offset Y** - Precyzyjne przesunięcie obrazu od lewej/górnej krawędzi okna Discorda.
+- **Margin Right / Margin Bottom** - Marginesy ustalające wielkość wideo.
+- **Presets 1 / 2 / 3** - Przyciski do szybkiego przełączania się między zapisanymi profilami ustawień.
+- **Hotkey** - Skrót klawiszowy do błyskawicznego pokazywania/ukrywania overlayu (domyślnie `F7 + F8`).
 
-Once the streaming server is set up, the streamer will provide you with an `http://192.168.8.122:8889/stream/whip?buffer=0` URL that you can simply paste into your **Options** menu.
+*Po kliknięciu przycisku **Save**, overlay zrestartuje się automatycznie z nowymi parametrami.*
+
+### Linux (Szczegóły techniczne i CLI)
+Wersja linuksowa posiada kilka zaawansowanych mechanizmów pod maską:
+- **Wymagania:** Do działania wymagana jest dowolna przeglądarka oparta na Chromium (Chrome, Chromium, Brave, Edge, Vivaldi). Jeśli nie zostanie znaleziona, program awaryjnie otworzy link w domyślnej przeglądarce systemu.
+- **Izolowany profil:** Aplikacja tworzy własny profil przeglądarki. Dzięki temu Twoje wtyczki (np. adblocki, wtyczki cashback) nie ingerują w strumień i nie psują okna.
+- **Tarcza kliknięć (Click-Shield):** Wygenerowany odtwarzacz posiada nałożoną niewidzialną warstwę ochronną. Blokuje ona przypadkowe kliknięcia (i pauzowanie) na środku wideo, ale zostawia wolne 52 piksele na dole ekranu, pozwalając na swobodne korzystanie z paska głośności czy trybu pełnoekranowego.
+
+**Dostępne parametry CLI (Linux):**
+Składnia: `[URL] [Szerokość][Wysokość] [--save-only]`
+
+Możesz je dowolnie mieszać, np.:
+- Zmiana samego rozmiaru okna: `./app 1920 1080`
+- Zmiana samego linku i zapis: `./app http://nowy-link --save-only`
+
+### 📁 Gdzie zapisywana jest konfiguracja?
+Zarówno na Windowsie, jak i na Linuxie, Twoje ustawienia zapisywane są w pliku `config.json`:
+- **Windows:** `%APPDATA%\Discord_Stream_Overlay\config.json`
+- **Linux:** `~/.config/discord_stream_overlay/config.json`
 
 ---
 
-## 🎮 How to Use
+## 📡 Wymagania po stronie streamera
 
-1.  **Open Discord**.
-2.  Start the **Discord Stream Overlay** app.
-3.  The stream window will launch, automatically detect your Discord window, and snap to its layout.
-4.  Use your **Toggle Hotkey** (default `F7 + F8`) if you need to quickly hide the stream to interact with Discord underneath.
-5.  To close the application entirely, right-click the System Tray icon and select **Quit**.
+Aby to narzędzie zadziałało, osoba nadająca (streamer) musi wygenerować i udostępnić Ci link do strumienia webowego (WebRTC lub HLS). Narzędzie jest kompatybilne z takimi rozwiązaniami jak:
+- **MediaMTX**
+- **OBS WebRTC**
+- **Nginx-RTMP** (z wyjściem HLS)
+
+Jako widz potrzebujesz wyłącznie otrzymanego od streamera adresu URL (np. `http://192.168.x.x:8889/stream`).

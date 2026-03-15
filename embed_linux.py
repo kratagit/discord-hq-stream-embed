@@ -46,7 +46,7 @@ def save_config(cfg):
         print(f"Error saving config: {e}")
 
 def find_chromium_based_browser():
-    """Szuka zainstalowanej przeglądarki opartej na Chromium, bo one obsługują tryb --app."""
+    """Finds an installed Chromium-based browser, because they support --app mode."""
     browsers = {
         'google-chrome': 'Google Chrome',
         'google-chrome-stable': 'Google Chrome',
@@ -64,7 +64,7 @@ def find_chromium_based_browser():
     return None, None
 
 def create_local_html_player(stream_url, window_title):
-    """Tworzy tymczasowy plik HTML, który osadza stream, dodaje niewidzialną warstwę blokującą kliknięcia wideo oraz ustawia tytuł taga <title>."""
+    """Creates a temporary HTML file that embeds the stream, adds an invisible click-shield over video, and sets the <title> tag."""
     html_content = f"""<!DOCTYPE html>
 <html>
 <head>
@@ -74,7 +74,7 @@ def create_local_html_player(stream_url, window_title):
         .container {{ position: relative; width: 100%; height: 100%; }}
         iframe {{ width: 100%; height: 100%; border: none; }}
         
-        /* SHIELD: blocks clicking in the center of the image, leaving 52px at the bottom for play/pause/fullscreen buttons */
+        /* SHIELD: blocks clicks in the center of the image, leaving 52px at the bottom for play/pause/fullscreen buttons */
         .click-shield {{
             position: absolute;
             top: 0;
@@ -87,10 +87,10 @@ def create_local_html_player(stream_url, window_title):
 </head>
 <body>
     <div class="container">
-        <!-- Odtwarzacz strumienia -->
+        <!-- Stream player -->
         <iframe src="{stream_url}" allow="autoplay; fullscreen; camera; microphone" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"></iframe>
         
-        <!-- Niewidzialna warstwa absorbująca kliknięcia w obrazie wideo -->
+        <!-- Invisible layer that absorbs clicks on the video area -->
         <div class="click-shield" oncontextmenu="return false;"></div>
     </div>
 </body>
@@ -99,21 +99,21 @@ def create_local_html_player(stream_url, window_title):
     fd, path = tempfile.mkstemp(suffix=".html", prefix="discord_stream_linux_")
     with os.fdopen(fd, 'w', encoding='utf-8') as f:
         f.write(html_content)
-    # Zwracamy format adresu URL wymaganego do otworzenia pliku lokalnego w przeglądarce
+    # Return the URL format required to open the local file in a browser
     return f"file://{urllib.parse.quote(path)}"
 
 def main():
     parser = argparse.ArgumentParser(description="Discord Stream Overlay (Linux App Mode)")
     
-    # Rejestrujemy pozycyjne, opcjonalne argumenty. Ich kolejność ma znaczenie, nazwa/flaga nie jest wymagana.
-    parser.add_argument('url', type=str, nargs='?', default=None, help='Adres URL streamu, np. http://.../stream')
-    parser.add_argument('width', type=int, nargs='?', default=None, help='Szerokość okna (np. 1280)')
-    parser.add_argument('height', type=int, nargs='?', default=None, help='Wysokość okna (np. 720)')
+    # Register positional optional arguments. Their order matters; names/flags are not required.
+    parser.add_argument('url', type=str, nargs='?', default=None, help='Stream URL, e.g. http://.../stream')
+    parser.add_argument('width', type=int, nargs='?', default=None, help='Window width (e.g. 1280)')
+    parser.add_argument('height', type=int, nargs='?', default=None, help='Window height (e.g. 720)')
     
-    # Dodatkowa flaga, która pozwala nadpisać config bez uruchamiania UI
-    parser.add_argument('--save-only', action='store_true', help='Zapisuje ustawienia i natychmiast wyłącza program')
+    # Extra flag to overwrite config without launching the UI
+    parser.add_argument('--save-only', action='store_true', help='Saves settings and exits immediately')
     
-    # Wyłapujemy wszystkie argumenty
+    # Capture all arguments
     args, unknown = parser.parse_known_args()
 
     print("Starting Discord Stream Overlay (Linux App Mode)...")
@@ -121,15 +121,15 @@ def main():
     
     config_changed = False
     
-    # Przypisujemy wartości tylko wtedy, gdy ktoś faktycznie coś podał
+    # Assign values only when user actually provided them
     if args.url is not None:
-        # Jeśli użytkownik podał liczbę w pierwszej pozycji (np. chce zmienić tylko width), python potraktuje to jako tekst "800".
-        # Ale jeśli to jest tylko i wyłącznie liczba, my możemy uznać że to jest tak naprawdę width, a link chce pominąć.
+        # If the user passed a number in the first position (e.g. wants to change only width), Python treats it as text "800".
+        # If it is only a number, we can treat it as width and assume URL should be left unchanged.
         if args.url.isdigit() and args.width is None:
             cfg["WINDOW_WIDTH"] = int(args.url)
             config_changed = True
         elif args.url.isdigit() and args.width is not None and args.height is None:
-             # Np wpisał "800 600", traktujemy to jako width i height.
+             # E.g. entered "800 600", treat it as width and height.
              cfg["WINDOW_WIDTH"] = int(args.url)
              cfg["WINDOW_HEIGHT"] = int(args.width)
              config_changed = True
@@ -137,7 +137,7 @@ def main():
             cfg["STREAM_URL"] = args.url
             config_changed = True
             
-            # Skoro `url` było naprawdę linkiem, sprawdzamy też resztę
+            # Since `url` is actually a URL, check remaining optional values too
             if args.width is not None:
                 cfg["WINDOW_WIDTH"] = args.width
                 config_changed = True
@@ -145,15 +145,15 @@ def main():
                 cfg["WINDOW_HEIGHT"] = args.height
                 config_changed = True
 
-    # Zapisujemy tylko jeśli były jakiekolwiek zmiany z terminala albo jeśli plik jeszcze w ogóle nie istniał
+    # Save only if there were terminal changes or if config file does not exist yet
     if config_changed or not os.path.exists(CONFIG_FILE):
         save_config(cfg)
         if config_changed:
-            print("Zaktualizowano plik konfiguracji nowymi parametrami z terminala!")
+            print("Configuration file updated with new terminal parameters!")
 
-    # Jeżeli użyto flagi --save-only, to przerywamy uruchamianie i od razu zamykamy program
+    # If --save-only is used, stop startup and exit immediately
     if args.save_only:
-        print("Tylko zapisałem ustawienia, zgodnie z prośbą zamykam aplikację. Miłego dnia!")
+        print("Settings saved only; exiting now as requested.")
         sys.exit(0)
 
     STREAM_URL = cfg.get("STREAM_URL", "http://192.168.8.122:8889/stream")
@@ -163,26 +163,26 @@ def main():
     browser_path, browser_name = find_chromium_based_browser()
     
     if browser_path:
-        print(f"Znaleziono przeglądarkę: {browser_name} ({browser_path})")
-        print(f"Uruchamiam strumień: {STREAM_URL}")
+        print(f"Found browser: {browser_name} ({browser_path})")
+        print(f"Launching stream: {STREAM_URL}")
         
-        # Ustalamy nazwę uruchomionego pliku (jeśli z AppImage, wyciągamy prawidłową nazwę paczki)
+        # Determine launched file name (if from AppImage, extract proper package name)
         appimage_path = os.environ.get("APPIMAGE")
         if appimage_path:
             app_name = os.path.basename(appimage_path)
         else:
             app_name = os.path.basename(sys.argv[0])
             
-        # Konstruujemy dynamiczny tytuł: NazwaAplikacji - STREAM_URL (via Przeglądarka)
+        # Build dynamic title: AppName - STREAM_URL (via Browser)
         full_title = f"{app_name} - {STREAM_URL} (via {browser_name})"
         
-        # Tworzymy lokalny plik HTML z załączonym streamem i tarczą na kliknięcia, wgrywając nasz tytuł
+        # Create local HTML file with embedded stream and click-shield, injecting our title
         local_player_url = create_local_html_player(STREAM_URL, full_title)
         
-        # Definiujemy czysty profil dla przeglądarki (żeby wtyczki takie jak LetyShops się nie ładowały)
+        # Define a clean browser profile (so extensions like LetyShops are not loaded)
         profile_dir = os.path.join(CONFIG_DIR, "browser_profile")
         
-        # Uruchomienie w trybie "Aplikacji" bez interfejsu przeglądarki ze stałym rozmiarem
+        # Launch in "App" mode without browser UI and with fixed size
         cmd = [
             browser_path,
             f'--app={local_player_url}',
@@ -193,13 +193,13 @@ def main():
             '--no-default-browser-check'
         ]
         
-        # Otwieramy proces, ukrywając zbędne logi silnika przeglądarki ze strumieni wyjścia
+        # Start process while hiding unnecessary browser engine logs from output streams
         subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     else:
-        print("Błąd: Nie znaleziono żadnej przeglądarki opartej o Chromium (Chrome, Chromium, Brave, Edge).")
-        print("Na Linuksie używamy lekkiego trybu --app, aby osadzić okno bez interfejsu przeglądarki.")
+        print("Error: No Chromium-based browser found (Chrome, Chromium, Brave, Edge).")
+        print("On Linux we use lightweight --app mode to embed a window without browser UI.")
         
-        # Awaryjne uruchomienie domyślnej przeglądarki sytemowej w nowym oknie
+        # Fallback: open system default browser in a new window
         import webbrowser
         webbrowser.open_new(STREAM_URL)
 
