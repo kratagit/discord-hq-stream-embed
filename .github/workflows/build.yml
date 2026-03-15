@@ -1,5 +1,5 @@
 # .github/workflows/build.yml
-name: Build Windows Executable
+name: Build Executables
 
 on:
   workflow_dispatch:
@@ -9,14 +9,15 @@ on:
         required: true
         default: 'v1.0.0'
 
+permissions:
+  contents: write
+
 jobs:
-  build:
+  build-windows:
     name: Build Windows EXE
     runs-on: windows-latest
     env:
       PYTHONUTF8: 1
-    permissions:
-      contents: write
     
     steps:
       - name: Checkout Code
@@ -59,6 +60,54 @@ jobs:
           files: |
             dist/Discord_Stream_Overlay-${{ steps.get_version.outputs.VERSION }}-Windows-x86_64.exe
           generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-linux:
+    name: Build Linux Binary
+    runs-on: ubuntu-20.04 # Stabilna starsza dystrybucja żeby binary był kompatybilny z każdym nowoczesnym Linuxem i problemem starych glibc!
+    env:
+      PYTHONUTF8: 1
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+          pip install -r requirements.txt
+
+      - name: Install UPX
+        uses: crazy-max/ghaction-upx@v3
+        with:
+          install-only: true
+          
+      - name: Get tag version
+        id: get_version
+        run: |
+          TAG="${{ github.event.inputs.version }}"
+          VERSION="${TAG#v}"
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          
+      - name: Build with PyInstaller
+        run: |
+          pyinstaller --noconfirm --onefile --windowed --name "Discord_Stream_Overlay-${{ steps.get_version.outputs.VERSION }}-Linux-x86_64" --exclude-module "tkinter" --exclude-module "pystray" --exclude-module "PIL" --exclude-module "win32gui" --exclude-module "pywebview" --exclude-module "win32con" --exclude-module "win32api" --exclude-module "webview" --exclude-module "numpy" --exclude-module "pandas" --exclude-module "unittest" --exclude-module "pydoc" --exclude-module "xml" embed_linux.py
+
+      - name: Upload Linux Binary to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.event.inputs.version }}
+          files: |
+            dist/Discord_Stream_Overlay-${{ steps.get_version.outputs.VERSION }}-Linux-x86_64
           draft: false
           prerelease: false
         env:
