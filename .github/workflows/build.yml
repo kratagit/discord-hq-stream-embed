@@ -67,7 +67,7 @@ jobs:
 
   build-linux:
     name: Build Linux Binary
-    runs-on: ubuntu-20.04 # Stabilna starsza dystrybucja żeby binary był kompatybilny z każdym nowoczesnym Linuxem i problemem starych glibc!
+    runs-on: ubuntu-22.04 # Zmiana z wycofanego stabilnego 20.04 na dostępny stabilny 22.04 LTS
     env:
       PYTHONUTF8: 1
     
