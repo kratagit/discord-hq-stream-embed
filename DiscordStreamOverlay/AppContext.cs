@@ -68,6 +68,27 @@ namespace DiscordStreamOverlay
                 overlayForm = null;
             }
 
+            if (!config.ATTACH_TO_DISCORD)
+            {
+                Icon standaloneIcon = null;
+                try
+                {
+                    string iconPath = System.IO.Path.Combine(Application.StartupPath, "..", "..", "..", "..", "assets", "icon_s.ico");
+                    if (!System.IO.File.Exists(iconPath))
+                        iconPath = System.IO.Path.Combine(Application.StartupPath, "assets", "icon_s.ico");
+                    
+                    if (System.IO.File.Exists(iconPath))
+                        standaloneIcon = new Icon(iconPath);
+                }
+                catch { }
+
+                string windowTitle = $"Discord Stream Overlay - {config.STREAM_URL}";
+                overlayForm = new OverlayForm(config.STREAM_URL, true, windowTitle, standaloneIcon);
+                overlayForm.FullscreenStateChanged += OverlayForm_FullscreenStateChanged;
+                overlayForm.Show();
+                return;
+            }
+
             discordHwnd = WindowManager.FindDiscordWindow();
             if (discordHwnd == IntPtr.Zero)
             {
@@ -147,6 +168,11 @@ namespace DiscordStreamOverlay
                 restartRequested = false;
                 StartStreamCycle();
                 return;
+            }
+
+            if (!config.ATTACH_TO_DISCORD)
+            {
+                return; // In standalone mode, do not track Discord
             }
 
             if (!WindowManager.IsWindow(discordHwnd))
@@ -239,6 +265,10 @@ namespace DiscordStreamOverlay
             {
                 if (isVisible) WindowManager.ShowWindow(overlayForm.Handle, WindowManager.SW_SHOWNA);
                 else WindowManager.ShowWindow(overlayForm.Handle, WindowManager.SW_HIDE);
+            }
+            else if (!config.ATTACH_TO_DISCORD && isVisible)
+            {
+                StartStreamCycle();
             }
         }
 

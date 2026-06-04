@@ -25,6 +25,8 @@ namespace DiscordStreamOverlay
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
             this.WindowState = FormWindowState.Minimized;
+            
+            try { this.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
 
             InitializeComponents();
             LoadConfigValues();
@@ -48,6 +50,7 @@ namespace DiscordStreamOverlay
 
         private Label lblActivePreset;
         private Label lblSavedMessage;
+        private ToggleSwitch tglAttach;
 
         private void InitializeComponents()
         {
@@ -74,6 +77,14 @@ namespace DiscordStreamOverlay
             
             txtHotkey = new TextBox { Font = normFont, Width = 530, Location = new Point(25, currentY) };
             this.Controls.Add(txtHotkey);
+            currentY += 35;
+
+            // Attach Toggle
+            tglAttach = new ToggleSwitch { Location = new Point(25, currentY) };
+            this.Controls.Add(tglAttach);
+            
+            Label lblAttach = new Label { Text = "Attach Stream to Discord App", Font = boldFont, AutoSize = true, Location = new Point(85, currentY + 4) };
+            this.Controls.Add(lblAttach);
             currentY += 35;
 
             // Margins GroupBox
@@ -139,6 +150,7 @@ namespace DiscordStreamOverlay
 
         private void LoadConfigValues()
         {
+            tglAttach.Checked = config.ATTACH_TO_DISCORD;
             txtUrl.Text = config.STREAM_URL;
             txtHotkey.Text = config.HOTKEY_TOGGLE_STREAM;
             txtOffsetX.Text = config.OFFSET_X.ToString();
@@ -180,6 +192,7 @@ namespace DiscordStreamOverlay
             if (int.TryParse(txtOffsetX.Text, out int ox) && int.TryParse(txtOffsetY.Text, out int oy) &&
                 int.TryParse(txtMarginRight.Text, out int mr) && int.TryParse(txtMarginBottom.Text, out int mb))
             {
+                config.ATTACH_TO_DISCORD = tglAttach.Checked;
                 config.STREAM_URL = txtUrl.Text.Trim();
                 config.HOTKEY_TOGGLE_STREAM = txtHotkey.Text.Trim();
                 config.OFFSET_X = ox;

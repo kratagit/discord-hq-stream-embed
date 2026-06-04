@@ -16,6 +16,7 @@ namespace DiscordStreamOverlay
 
     public class AppConfig
     {
+        public bool ATTACH_TO_DISCORD { get; set; } = true;
         public string STREAM_URL { get; set; } = "http://192.168.8.122:8889/stream";
         public string HOTKEY_TOGGLE_STREAM { get; set; } = "f7+f8";
         public string WINDOW_TITLE { get; set; } = "MY_STREAM";

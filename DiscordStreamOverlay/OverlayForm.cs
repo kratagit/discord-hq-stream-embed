@@ -10,18 +10,35 @@ namespace DiscordStreamOverlay
     {
         private WebView2 webView;
         private string streamUrl;
+        private bool isStandalone;
         public bool IsFullscreenMode { get; private set; }
 
         public event EventHandler FullscreenStateChanged;
 
-        public OverlayForm(string url)
+        public OverlayForm(string url, bool standalone = false, string windowTitle = "Stream", Icon appIcon = null)
         {
             this.streamUrl = url;
-            this.FormBorderStyle = FormBorderStyle.None;
-            this.ShowInTaskbar = false;
-            this.TopMost = false;
+            this.isStandalone = standalone;
+
+            if (isStandalone)
+            {
+                this.FormBorderStyle = FormBorderStyle.Sizable;
+                this.ShowInTaskbar = true;
+                this.Text = windowTitle;
+                if (appIcon != null) this.Icon = appIcon;
+                this.TopMost = false;
+                this.StartPosition = FormStartPosition.CenterScreen;
+                this.Size = new Size(1280, 720); // Domyślny rozmiar
+            }
+            else
+            {
+                this.FormBorderStyle = FormBorderStyle.None;
+                this.ShowInTaskbar = false;
+                this.TopMost = false;
+                this.StartPosition = FormStartPosition.Manual;
+            }
+
             this.BackColor = Color.Black;
-            this.StartPosition = FormStartPosition.Manual;
 
             webView = new WebView2
             {
@@ -107,9 +124,12 @@ namespace DiscordStreamOverlay
             get
             {
                 CreateParams cp = base.CreateParams;
-                // Exclude from taskbar / Alt+Tab
-                cp.ExStyle |= WindowManager.WS_EX_TOOLWINDOW;
-                cp.ExStyle &= ~WindowManager.WS_EX_APPWINDOW;
+                if (!isStandalone)
+                {
+                    // Exclude from taskbar / Alt+Tab when attached to Discord
+                    cp.ExStyle |= WindowManager.WS_EX_TOOLWINDOW;
+                    cp.ExStyle &= ~WindowManager.WS_EX_APPWINDOW;
+                }
                 return cp;
             }
         }
