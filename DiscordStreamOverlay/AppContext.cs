@@ -73,12 +73,17 @@ namespace DiscordStreamOverlay
                 Icon standaloneIcon = null;
                 try
                 {
-                    string iconPath = System.IO.Path.Combine(Application.StartupPath, "..", "..", "..", "..", "assets", "icon_s.ico");
-                    if (!System.IO.File.Exists(iconPath))
-                        iconPath = System.IO.Path.Combine(Application.StartupPath, "assets", "icon_s.ico");
+                    string exeDir = System.IO.Path.GetDirectoryName(System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName ?? Application.StartupPath) ?? Application.StartupPath;
+                    string iconPath1 = System.IO.Path.Combine(exeDir, "assets", "icon_s.ico");
+                    string iconPath2 = System.IO.Path.Combine(Application.StartupPath, "assets", "icon_s.ico");
+                    string iconPath3 = System.IO.Path.Combine(Application.StartupPath, "..", "..", "..", "..", "assets", "icon_s.ico");
                     
-                    if (System.IO.File.Exists(iconPath))
-                        standaloneIcon = new Icon(iconPath);
+                    if (System.IO.File.Exists(iconPath1))
+                        standaloneIcon = new Icon(iconPath1);
+                    else if (System.IO.File.Exists(iconPath2))
+                        standaloneIcon = new Icon(iconPath2);
+                    else if (System.IO.File.Exists(iconPath3))
+                        standaloneIcon = new Icon(iconPath3);
                 }
                 catch { }
 

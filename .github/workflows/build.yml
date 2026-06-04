@@ -38,7 +38,7 @@ jobs:
       - name: Build with dotnet publish
         run: |
           cd DiscordStreamOverlay
-          dotnet publish -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true
+          dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
           Move-Item "bin\Release\net9.0-windows\win-x64\publish\DiscordStreamOverlay.exe" "..\Discord_Stream_Overlay-${{ steps.get_version.outputs.VERSION }}-Windows-x64.exe"
 
       - name: Create Release
