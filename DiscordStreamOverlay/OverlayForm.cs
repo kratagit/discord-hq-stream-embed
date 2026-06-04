@@ -37,6 +37,9 @@ namespace DiscordStreamOverlay
         {
             await webView.EnsureCoreWebView2Async(null);
             
+            // Disable default Edge hotkeys (like F7 for Caret Browsing, F5, etc.)
+            webView.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled = false;
+
             webView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
 
             string htmlContent = $@"<!DOCTYPE html>

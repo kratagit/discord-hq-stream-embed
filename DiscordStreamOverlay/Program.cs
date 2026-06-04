@@ -21,7 +21,7 @@ namespace DiscordStreamOverlay
 
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
-                Application.Run(new TrayApplicationContext());
+                Application.Run(new AppContext());
             }
         }
     }

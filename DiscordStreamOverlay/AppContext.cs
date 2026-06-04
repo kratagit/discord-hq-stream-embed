@@ -4,9 +4,9 @@ using System.Windows.Forms;
 
 namespace DiscordStreamOverlay
 {
-    public class TrayApplicationContext : ApplicationContext
+    public class AppContext : ApplicationContext
     {
-        private NotifyIcon trayIcon;
+        private SettingsForm settingsForm;
         private AppConfig config;
         private GlobalHotkey globalHotkey;
         private OverlayForm overlayForm;
@@ -24,23 +24,28 @@ namespace DiscordStreamOverlay
             public WindowWrapper(IntPtr handle) { Handle = handle; }
         }
 
-        public TrayApplicationContext()
+        public AppContext()
         {
             config = ConfigManager.Load();
 
-            trayIcon = new NotifyIcon()
-            {
-                Icon = CreateTrayIcon(),
-                ContextMenuStrip = new ContextMenuStrip(),
-                Visible = true,
-                Text = "Discord Stream Overlay"
-            };
-
-            trayIcon.ContextMenuStrip.Items.Add("Close/Open Settings", null, ToggleOptions);
-            trayIcon.ContextMenuStrip.Items.Add("Restart Stream", null, TriggerRestart);
-            trayIcon.ContextMenuStrip.Items.Add("Quit", null, Exit);
-
             globalHotkey = new GlobalHotkey();
+            globalHotkey.SetHotkeyString(config.HOTKEY_TOGGLE_STREAM);
+            globalHotkey.HotkeyPressed += GlobalHotkey_HotkeyPressed;
+
+            settingsForm = new SettingsForm(config);
+            settingsForm.SettingsSaved += (s, ev) =>
+            {
+                config = ConfigManager.Load();
+                globalHotkey.SetHotkeyString(config.HOTKEY_TOGGLE_STREAM);
+                TriggerRestart(null, null);
+            };
+            settingsForm.FormClosed += (s, e) =>
+            {
+                globalHotkey.Dispose();
+                if (overlayForm != null) overlayForm.Close();
+                ExitThread();
+            };
+            settingsForm.Show();
             globalHotkey.SetHotkeyString(config.HOTKEY_TOGGLE_STREAM);
             globalHotkey.HotkeyPressed += GlobalHotkey_HotkeyPressed;
 
@@ -52,17 +57,6 @@ namespace DiscordStreamOverlay
             loopTimer = new System.Windows.Forms.Timer { Interval = intervalMs }; // e.g., 6ms for 144Hz, 16ms for 60Hz
             loopTimer.Tick += LoopTimer_Tick;
             loopTimer.Start();
-        }
-
-        private Icon CreateTrayIcon()
-        {
-            Bitmap bmp = new Bitmap(64, 64);
-            using (Graphics g = Graphics.FromImage(bmp))
-            {
-                g.Clear(Color.FromArgb(88, 101, 242));
-                g.FillRectangle(Brushes.White, 16, 16, 32, 32);
-            }
-            return Icon.FromHandle(bmp.GetHicon());
         }
 
         private void StartStreamCycle()
@@ -248,29 +242,9 @@ namespace DiscordStreamOverlay
             }
         }
 
-        private void ToggleOptions(object sender, EventArgs e)
-        {
-            SettingsForm settings = new SettingsForm(config);
-            settings.SettingsSaved += (s, ev) =>
-            {
-                config = ConfigManager.Load();
-                globalHotkey.SetHotkeyString(config.HOTKEY_TOGGLE_STREAM);
-                TriggerRestart(null, null);
-            };
-            settings.ShowDialog();
-        }
-
         private void TriggerRestart(object sender, EventArgs e)
         {
             restartRequested = true;
-        }
-
-        private void Exit(object sender, EventArgs e)
-        {
-            trayIcon.Visible = false;
-            globalHotkey.Dispose();
-            if (overlayForm != null) overlayForm.Close();
-            Application.Exit();
         }
     }
 }
