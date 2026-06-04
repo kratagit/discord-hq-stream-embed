@@ -16,29 +16,15 @@ jobs:
   build-windows:
     name: Build Windows EXE
     runs-on: windows-latest
-    env:
-      PYTHONUTF8: 1
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
         
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
         with:
-          python-version: '3.13'
-          
-      - name: Install Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install pyinstaller
-          pip install -r requirements.txt
-
-      - name: Install UPX
-        uses: crazy-max/ghaction-upx@v3
-        with:
-          install-only: true
+          dotnet-version: '9.0.x'
           
       - name: Get tag version
         id: get_version
@@ -49,9 +35,11 @@ jobs:
           $version = $tag.TrimStart('v')
           echo "VERSION=$version" >> $env:GITHUB_OUTPUT
           
-      - name: Build with PyInstaller
+      - name: Build with dotnet publish
         run: |
-          pyinstaller --noconfirm --onefile --windowed --icon="assets/icon.ico" --exclude-module "numpy" --exclude-module "pandas" --exclude-module "unittest" --exclude-module "pydoc" --exclude-module "xml" --name "Discord_Stream_Overlay-${{ steps.get_version.outputs.VERSION }}-Windows-x86_64" embed_discord.py
+          cd DiscordStreamOverlay
+          dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+          Move-Item "bin\Release\net9.0-windows\win-x64\publish\DiscordStreamOverlay.exe" "..\Discord_Stream_Overlay-${{ steps.get_version.outputs.VERSION }}-Windows-x64.exe"
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
@@ -59,7 +47,7 @@ jobs:
           tag_name: ${{ github.event.inputs.version }}
           name: Release ${{ github.event.inputs.version }}
           files: |
-            dist/Discord_Stream_Overlay-${{ steps.get_version.outputs.VERSION }}-Windows-x86_64.exe
+            Discord_Stream_Overlay-${{ steps.get_version.outputs.VERSION }}-Windows-x64.exe
           generate_release_notes: true
           draft: false
           prerelease: false
