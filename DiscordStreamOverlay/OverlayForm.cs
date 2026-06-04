@@ -52,7 +52,9 @@ namespace DiscordStreamOverlay
 
         async void InitializeAsync()
         {
-            await webView.EnsureCoreWebView2Async(null);
+            string userDataFolder = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Discord_Stream_Overlay", "WebView2Data");
+            var env = await CoreWebView2Environment.CreateAsync(null, userDataFolder);
+            await webView.EnsureCoreWebView2Async(env);
             
             // Disable default Edge hotkeys (like F7 for Caret Browsing, F5, etc.)
             webView.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled = false;
