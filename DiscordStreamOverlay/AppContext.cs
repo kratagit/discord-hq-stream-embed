@@ -9,6 +9,7 @@ namespace DiscordStreamOverlay
         private SettingsForm settingsForm;
         private AppConfig config;
         private GlobalHotkey globalHotkey;
+        private GlobalHotkey modeHotkey;
         private OverlayForm overlayForm;
         private System.Windows.Forms.Timer loopTimer;
 
@@ -32,22 +33,26 @@ namespace DiscordStreamOverlay
             globalHotkey.SetHotkeyString(config.HOTKEY_TOGGLE_STREAM);
             globalHotkey.HotkeyPressed += GlobalHotkey_HotkeyPressed;
 
+            modeHotkey = new GlobalHotkey();
+            modeHotkey.SetHotkeyString(config.HOTKEY_TOGGLE_MODE);
+            modeHotkey.HotkeyPressed += ModeHotkey_HotkeyPressed;
+
             settingsForm = new SettingsForm(config);
             settingsForm.SettingsSaved += (s, ev) =>
             {
                 config = ConfigManager.Load();
                 globalHotkey.SetHotkeyString(config.HOTKEY_TOGGLE_STREAM);
+                modeHotkey.SetHotkeyString(config.HOTKEY_TOGGLE_MODE);
                 TriggerRestart(null, null);
             };
             settingsForm.FormClosed += (s, e) =>
             {
                 globalHotkey.Dispose();
+                modeHotkey.Dispose();
                 if (overlayForm != null) overlayForm.Close();
                 ExitThread();
             };
             settingsForm.Show();
-            globalHotkey.SetHotkeyString(config.HOTKEY_TOGGLE_STREAM);
-            globalHotkey.HotkeyPressed += GlobalHotkey_HotkeyPressed;
 
             StartStreamCycle();
 
@@ -73,17 +78,21 @@ namespace DiscordStreamOverlay
                 Icon standaloneIcon = null;
                 try
                 {
-                    string exeDir = System.IO.Path.GetDirectoryName(System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName ?? Application.StartupPath) ?? Application.StartupPath;
-                    string iconPath1 = System.IO.Path.Combine(exeDir, "assets", "icon_s.ico");
-                    string iconPath2 = System.IO.Path.Combine(Application.StartupPath, "assets", "icon_s.ico");
-                    string iconPath3 = System.IO.Path.Combine(Application.StartupPath, "..", "..", "..", "..", "assets", "icon_s.ico");
-                    
-                    if (System.IO.File.Exists(iconPath1))
-                        standaloneIcon = new Icon(iconPath1);
-                    else if (System.IO.File.Exists(iconPath2))
-                        standaloneIcon = new Icon(iconPath2);
-                    else if (System.IO.File.Exists(iconPath3))
-                        standaloneIcon = new Icon(iconPath3);
+                    using (var stream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("DiscordStreamOverlay.icon_s.ico"))
+                    {
+                        if (stream != null)
+                        {
+                            standaloneIcon = new Icon(stream);
+                        }
+                        else
+                        {
+                            // Fallback to disk if embedded resource fails for some reason
+                            string exeDir = System.IO.Path.GetDirectoryName(System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName ?? Application.StartupPath) ?? Application.StartupPath;
+                            string iconPath = System.IO.Path.Combine(exeDir, "assets", "icon_s.ico");
+                            if (System.IO.File.Exists(iconPath))
+                                standaloneIcon = new Icon(iconPath);
+                        }
+                    }
                 }
                 catch { }
 
@@ -275,6 +284,20 @@ namespace DiscordStreamOverlay
             {
                 StartStreamCycle();
             }
+        }
+
+        private void ModeHotkey_HotkeyPressed(object sender, EventArgs e)
+        {
+            config.ATTACH_TO_DISCORD = !config.ATTACH_TO_DISCORD;
+            ConfigManager.Save(config);
+
+            if (settingsForm != null && !settingsForm.IsDisposed)
+            {
+                settingsForm.UpdateAttachToggle(config.ATTACH_TO_DISCORD);
+            }
+
+            // Immediately restart the stream with new mode
+            TriggerRestart(null, null);
         }
 
         private void TriggerRestart(object sender, EventArgs e)

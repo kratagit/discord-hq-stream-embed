@@ -10,6 +10,7 @@ namespace DiscordStreamOverlay
         
         private TextBox txtUrl;
         private TextBox txtHotkey;
+        private TextBox txtHotkeyMode;
         private TextBox txtOffsetX, txtOffsetY, txtMarginRight, txtMarginBottom;
 
         public event EventHandler SettingsSaved;
@@ -70,13 +71,22 @@ namespace DiscordStreamOverlay
             this.Controls.Add(txtUrl);
             currentY += 35;
 
-            // Hotkey
+            // Hotkey Visibility
             Label lblHotkey = new Label { Text = "Toggle Visibility Hotkey (e.g. f8+f7):", Font = boldFont, AutoSize = true, Location = new Point(25, currentY) };
             this.Controls.Add(lblHotkey);
             currentY += 22;
             
             txtHotkey = new TextBox { Font = normFont, Width = 530, Location = new Point(25, currentY) };
             this.Controls.Add(txtHotkey);
+            currentY += 35;
+
+            // Hotkey Mode
+            Label lblHotkeyMode = new Label { Text = "Toggle Attached/Standalone Mode Hotkey (e.g. f8+f9):", Font = boldFont, AutoSize = true, Location = new Point(25, currentY) };
+            this.Controls.Add(lblHotkeyMode);
+            currentY += 22;
+            
+            txtHotkeyMode = new TextBox { Font = normFont, Width = 530, Location = new Point(25, currentY) };
+            this.Controls.Add(txtHotkeyMode);
             currentY += 35;
 
             // Attach Toggle
@@ -136,13 +146,13 @@ namespace DiscordStreamOverlay
             }
 
             // Buttons
-            Button btnSaveMain = new Button { Text = "Save and Apply", Font = titleFont, BackColor = Color.FromArgb(0, 120, 215), ForeColor = Color.White, FlatStyle = FlatStyle.Flat, Width = 150, Height = 35, Location = new Point(215, currentY) };
+            Button btnSaveMain = new Button { Text = "Save and Restart Stream", Font = titleFont, BackColor = Color.FromArgb(0, 120, 215), ForeColor = Color.White, FlatStyle = FlatStyle.Flat, Width = 200, Height = 35, Location = new Point(190, currentY) };
             btnSaveMain.FlatAppearance.BorderSize = 0;
             btnSaveMain.Cursor = Cursors.Hand;
             btnSaveMain.Click += BtnSaveMain_Click;
             this.Controls.Add(btnSaveMain);
 
-            lblSavedMessage = new Label { Text = "", Font = boldFont, ForeColor = Color.SeaGreen, AutoSize = true, Location = new Point(380, currentY + 8) };
+            lblSavedMessage = new Label { Text = "", Font = boldFont, ForeColor = Color.SeaGreen, AutoSize = true, Location = new Point(410, currentY + 8) };
             this.Controls.Add(lblSavedMessage);
 
             this.Height = currentY + 90;
@@ -153,11 +163,22 @@ namespace DiscordStreamOverlay
             tglAttach.Checked = config.ATTACH_TO_DISCORD;
             txtUrl.Text = config.STREAM_URL;
             txtHotkey.Text = config.HOTKEY_TOGGLE_STREAM;
+            txtHotkeyMode.Text = config.HOTKEY_TOGGLE_MODE;
             txtOffsetX.Text = config.OFFSET_X.ToString();
             txtOffsetY.Text = config.OFFSET_Y.ToString();
             txtMarginRight.Text = config.MARGIN_RIGHT.ToString();
             txtMarginBottom.Text = config.MARGIN_BOTTOM.ToString();
             if (lblActivePreset != null) lblActivePreset.Text = "Active Preset: Custom";
+        }
+
+        public void UpdateAttachToggle(bool isAttached)
+        {
+            if (InvokeRequired)
+            {
+                Invoke(new Action(() => UpdateAttachToggle(isAttached)));
+                return;
+            }
+            tglAttach.Checked = isAttached;
         }
 
         private void LoadPreset(string pid)
@@ -192,9 +213,12 @@ namespace DiscordStreamOverlay
             if (int.TryParse(txtOffsetX.Text, out int ox) && int.TryParse(txtOffsetY.Text, out int oy) &&
                 int.TryParse(txtMarginRight.Text, out int mr) && int.TryParse(txtMarginBottom.Text, out int mb))
             {
+                bool previousAttachState = config.ATTACH_TO_DISCORD;
+                
                 config.ATTACH_TO_DISCORD = tglAttach.Checked;
                 config.STREAM_URL = txtUrl.Text.Trim();
                 config.HOTKEY_TOGGLE_STREAM = txtHotkey.Text.Trim();
+                config.HOTKEY_TOGGLE_MODE = txtHotkeyMode.Text.Trim();
                 config.OFFSET_X = ox;
                 config.OFFSET_Y = oy;
                 config.MARGIN_RIGHT = mr;
@@ -203,7 +227,11 @@ namespace DiscordStreamOverlay
                 ConfigManager.Save(config);
                 SettingsSaved?.Invoke(this, EventArgs.Empty);
                 
-                if (lblSavedMessage != null)
+                if (previousAttachState == true && config.ATTACH_TO_DISCORD == false)
+                {
+                    this.WindowState = FormWindowState.Minimized;
+                }
+                else if (lblSavedMessage != null)
                 {
                     lblSavedMessage.Text = "Settings applied!";
                     await System.Threading.Tasks.Task.Delay(3000);

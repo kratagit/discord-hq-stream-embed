@@ -15,7 +15,11 @@ namespace DiscordStreamOverlay
             {
                 if (!mutex.WaitOne(0, false))
                 {
-                    MessageBox.Show("Instance already running");
+                    MessageBox.Show(
+                        "Discord Stream Overlay is already running.\n\nPlease check your taskbar for the settings window, or use your configured hotkey to toggle the stream visibility.", 
+                        "Discord Stream Overlay", 
+                        MessageBoxButtons.OK, 
+                        MessageBoxIcon.Information);
                     return;
                 }
 
