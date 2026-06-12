@@ -141,10 +141,45 @@ namespace DiscordStreamOverlay
             overlayForm.Show(new WindowWrapper(discordHwnd));
         }
 
+        private FormBorderStyle previousBorderStyle = FormBorderStyle.Sizable;
+        private FormWindowState previousWindowState = FormWindowState.Normal;
+
         private void OverlayForm_FullscreenStateChanged(object sender, EventArgs e)
         {
             if (overlayForm == null) return;
             IntPtr viewerHwnd = overlayForm.Handle;
+
+            if (!config.ATTACH_TO_DISCORD)
+            {
+                if (overlayForm.InvokeRequired)
+                {
+                    overlayForm.Invoke(new Action(() => OverlayForm_FullscreenStateChanged(sender, e)));
+                    return;
+                }
+
+                if (overlayForm.IsFullscreenMode)
+                {
+                    previousBorderStyle = overlayForm.FormBorderStyle;
+                    previousWindowState = overlayForm.WindowState;
+                    
+                    overlayForm.SuspendLayout();
+                    overlayForm.FormBorderStyle = FormBorderStyle.None;
+                    if (overlayForm.WindowState == FormWindowState.Maximized)
+                        overlayForm.WindowState = FormWindowState.Normal; // Force refresh
+                    overlayForm.WindowState = FormWindowState.Maximized;
+                    overlayForm.TopMost = true;
+                    overlayForm.ResumeLayout();
+                }
+                else
+                {
+                    overlayForm.SuspendLayout();
+                    overlayForm.FormBorderStyle = previousBorderStyle;
+                    overlayForm.WindowState = previousWindowState;
+                    overlayForm.TopMost = false;
+                    overlayForm.ResumeLayout();
+                }
+                return;
+            }
 
             if (overlayForm.IsFullscreenMode)
             {
