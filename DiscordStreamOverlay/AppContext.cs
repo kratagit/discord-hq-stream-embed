@@ -6,10 +6,8 @@ namespace DiscordStreamOverlay
 {
     public class AppContext : ApplicationContext
     {
-        private SettingsForm settingsForm;
         private AppConfig config;
         private GlobalHotkey globalHotkey;
-        private GlobalHotkey modeHotkey;
         private OverlayForm overlayForm;
         private System.Windows.Forms.Timer loopTimer;
 
@@ -29,30 +27,13 @@ namespace DiscordStreamOverlay
         {
             config = ConfigManager.Load();
 
+            Icon standaloneIcon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+
             globalHotkey = new GlobalHotkey();
             globalHotkey.SetHotkeyString(config.HOTKEY_TOGGLE_STREAM);
             globalHotkey.HotkeyPressed += GlobalHotkey_HotkeyPressed;
 
-            modeHotkey = new GlobalHotkey();
-            modeHotkey.SetHotkeyString(config.HOTKEY_TOGGLE_MODE);
-            modeHotkey.HotkeyPressed += ModeHotkey_HotkeyPressed;
-
-            settingsForm = new SettingsForm(config);
-            settingsForm.SettingsSaved += (s, ev) =>
-            {
-                config = ConfigManager.Load();
-                globalHotkey.SetHotkeyString(config.HOTKEY_TOGGLE_STREAM);
-                modeHotkey.SetHotkeyString(config.HOTKEY_TOGGLE_MODE);
-                TriggerRestart(null, null);
-            };
-            settingsForm.FormClosed += (s, e) =>
-            {
-                globalHotkey.Dispose();
-                modeHotkey.Dispose();
-                if (overlayForm != null) overlayForm.Close();
-                ExitThread();
-            };
-            settingsForm.Show();
+            // settingsForm is removed
 
             StartStreamCycle();
 
@@ -66,79 +47,147 @@ namespace DiscordStreamOverlay
 
         private void StartStreamCycle()
         {
-            if (overlayForm != null)
-            {
-                overlayForm.Close();
-                overlayForm.Dispose();
-                overlayForm = null;
-            }
-
-            if (!config.ATTACH_TO_DISCORD)
+            if (overlayForm == null || overlayForm.IsDisposed)
             {
                 Icon standaloneIcon = null;
                 try
                 {
                     using (var stream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("DiscordStreamOverlay.icon_s.ico"))
                     {
-                        if (stream != null)
-                        {
-                            standaloneIcon = new Icon(stream);
-                        }
+                        if (stream != null) standaloneIcon = new Icon(stream);
                         else
                         {
-                            // Fallback to disk if embedded resource fails for some reason
                             string exeDir = System.IO.Path.GetDirectoryName(System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName ?? Application.StartupPath) ?? Application.StartupPath;
                             string iconPath = System.IO.Path.Combine(exeDir, "assets", "icon_s.ico");
-                            if (System.IO.File.Exists(iconPath))
-                                standaloneIcon = new Icon(iconPath);
+                            if (System.IO.File.Exists(iconPath)) standaloneIcon = new Icon(iconPath);
                         }
                     }
                 }
                 catch { }
 
                 string windowTitle = $"Discord Stream Overlay - {config.STREAM_URL}";
-                overlayForm = new OverlayForm(config.STREAM_URL, true, windowTitle, standaloneIcon);
-                overlayForm.FullscreenStateChanged += OverlayForm_FullscreenStateChanged;
+                overlayForm = new OverlayForm(config, true, windowTitle, standaloneIcon);
+                WireUpOverlayFormEvents();
+                
+                // Set initial mode state
+                ApplyCurrentMode();
                 overlayForm.Show();
-                return;
             }
-
-            discordHwnd = WindowManager.FindDiscordWindow();
-            if (discordHwnd == IntPtr.Zero)
+            else
             {
-                return; // Will retry in the loop
+                // Just apply mode if already exists
+                ApplyCurrentMode();
             }
+        }
 
-            if (WindowManager.IsIconic(discordHwnd) || !WindowManager.IsWindowVisible(discordHwnd))
+        private void ApplyCurrentMode()
+        {
+            if (overlayForm == null || overlayForm.IsDisposed) return;
+            if (overlayForm.IsFullscreenMode) return; // Don't mess with window if fullscreen
+
+            if (!config.ATTACH_TO_DISCORD)
             {
-                // Discord is minimized or hidden. Do not create the form yet.
-                // We leave overlayForm as null. The loop will create it when Discord is restored.
-                return;
+                overlayForm.FormBorderStyle = FormBorderStyle.Sizable;
+                
+                IntPtr viewerHwnd = overlayForm.Handle;
+
+                // Show borders and apply frame changes
+                WindowManager.SetWindowPos(viewerHwnd, WindowManager.HWND_NOTOPMOST, 0, 0, 0, 0, 
+                    WindowManager.SWP_NOMOVE | WindowManager.SWP_NOSIZE | WindowManager.SWP_SHOWWINDOW | 0x0020 /* SWP_FRAMECHANGED */);
             }
+            else
+            {
+                discordHwnd = WindowManager.FindDiscordWindow();
+                if (discordHwnd != IntPtr.Zero)
+                {
+                    overlayForm.FormBorderStyle = FormBorderStyle.None;
+                    
+                    IntPtr viewerHwnd = overlayForm.Handle;
 
-            lastX = -1; lastY = -1; lastW = -1; lastH = -1;
+                    // Apply frame changes
+                    WindowManager.SetWindowPos(viewerHwnd, IntPtr.Zero, 0, 0, 0, 0, 
+                        WindowManager.SWP_NOMOVE | WindowManager.SWP_NOSIZE | WindowManager.SWP_NOZORDER | 0x0020 /* SWP_FRAMECHANGED */);
+                    
+                    // Force position update in the next loop tick
+                    lastX = -1; lastY = -1; lastW = -1; lastH = -1;
+                }
+            }
+        }
 
-            overlayForm = new OverlayForm(config.STREAM_URL);
+        private void WireUpOverlayFormEvents()
+        {
             overlayForm.FullscreenStateChanged += OverlayForm_FullscreenStateChanged;
+            overlayForm.SettingsSaved += OverlayForm_SettingsSaved;
+            overlayForm.PresetSaved += OverlayForm_PresetSaved;
+            overlayForm.PresetLoaded += OverlayForm_PresetLoaded;
+            overlayForm.ExitRequested += (s, e) => { ExitApplication(); };
             
-            // Set position immediately before showing to prevent visual glitches
-            WindowManager.GetWindowRect(discordHwnd, out WindowManager.RECT rect);
-            int d_x = rect.Left;
-            int d_y = rect.Top;
-            int d_w = rect.Right - rect.Left;
-            int d_h = rect.Bottom - rect.Top;
+            overlayForm.FormClosed += (s, e) => 
+            {
+                if (e.CloseReason == CloseReason.UserClosing)
+                {
+                    ExitApplication();
+                }
+            };
+        }
 
-            int new_width = d_w - config.OFFSET_X - config.MARGIN_RIGHT;
-            int new_height = d_h - config.OFFSET_Y - config.MARGIN_BOTTOM;
-            if (new_width < 100) new_width = 100;
-            if (new_height < 100) new_height = 100;
+        private void ExitApplication()
+        {
+            if (loopTimer != null) 
+            {
+                loopTimer.Stop();
+                loopTimer.Tick -= LoopTimer_Tick;
+            }
+            if (globalHotkey != null)
+            {
+                globalHotkey.Dispose();
+            }
+            ExitThread();
+        }
 
-            overlayForm.StartPosition = FormStartPosition.Manual;
-            overlayForm.Location = new Point(d_x + config.OFFSET_X, d_y + config.OFFSET_Y);
-            overlayForm.Size = new Size(new_width, new_height);
+        private void OverlayForm_SettingsSaved(object sender, AppConfig newConfig)
+        {
+            bool urlChanged = config.STREAM_URL != newConfig.STREAM_URL;
+            config = newConfig;
+            ConfigManager.Save(config);
+            globalHotkey.SetHotkeyString(config.HOTKEY_TOGGLE_STREAM);
 
-            // Show with Discord as owner
-            overlayForm.Show(new WindowWrapper(discordHwnd));
+            if (urlChanged)
+            {
+                if (overlayForm != null && !overlayForm.IsDisposed)
+                {
+                    overlayForm.Close();
+                    overlayForm = null;
+                }
+            }
+
+            TriggerRestart(null, null);
+        }
+
+        private void OverlayForm_PresetSaved(object sender, int presetId)
+        {
+            string pId = presetId.ToString();
+            if (!config.PRESETS.ContainsKey(pId)) config.PRESETS[pId] = new Preset();
+            config.PRESETS[pId].OFFSET_X = config.OFFSET_X;
+            config.PRESETS[pId].OFFSET_Y = config.OFFSET_Y;
+            config.PRESETS[pId].MARGIN_RIGHT = config.MARGIN_RIGHT;
+            config.PRESETS[pId].MARGIN_BOTTOM = config.MARGIN_BOTTOM;
+            ConfigManager.Save(config);
+        }
+
+        private void OverlayForm_PresetLoaded(object sender, int presetId)
+        {
+            string pId = presetId.ToString();
+            if (config.PRESETS.ContainsKey(pId))
+            {
+                var p = config.PRESETS[pId];
+                config.OFFSET_X = p.OFFSET_X;
+                config.OFFSET_Y = p.OFFSET_Y;
+                config.MARGIN_RIGHT = p.MARGIN_RIGHT;
+                config.MARGIN_BOTTOM = p.MARGIN_BOTTOM;
+                ConfigManager.Save(config);
+                TriggerRestart(null, null);
+            }
         }
 
         private FormBorderStyle previousBorderStyle = FormBorderStyle.Sizable;
@@ -183,9 +232,6 @@ namespace DiscordStreamOverlay
 
             if (overlayForm.IsFullscreenMode)
             {
-                // Detach from Discord
-                WindowManager.SetWindowLongPtr(viewerHwnd, WindowManager.GWL_HWNDPARENT, IntPtr.Zero);
-
                 // Find nearest monitor to Discord
                 IntPtr monitor = WindowManager.MonitorFromWindow(discordHwnd, WindowManager.MONITOR_DEFAULTTONEAREST);
                 WindowManager.MONITORINFO monitorInfo = new WindowManager.MONITORINFO();
@@ -205,7 +251,6 @@ namespace DiscordStreamOverlay
             else
             {
                 // Reattach
-                WindowManager.SetWindowLongPtr(viewerHwnd, WindowManager.GWL_HWNDPARENT, discordHwnd);
                 WindowManager.SetWindowPos(viewerHwnd, WindowManager.HWND_NOTOPMOST, 0, 0, 0, 0, WindowManager.SWP_NOMOVE | WindowManager.SWP_NOSIZE);
             }
         }
@@ -280,23 +325,48 @@ namespace DiscordStreamOverlay
 
                     if (d_x != lastX || d_y != lastY || d_w != lastW || d_h != lastH)
                     {
-                        lastX = d_x; lastY = d_y; lastW = d_w; lastH = d_h;
-
                         int new_width = d_w - config.OFFSET_X - config.MARGIN_RIGHT;
                         int new_height = d_h - config.OFFSET_Y - config.MARGIN_BOTTOM;
 
                         if (new_width < 100) new_width = 100;
                         if (new_height < 100) new_height = 100;
 
-                        WindowManager.SetWindowPos(
-                            viewerHwnd,
-                            IntPtr.Zero,
-                            d_x + config.OFFSET_X,
-                            d_y + config.OFFSET_Y,
-                            new_width,
-                            new_height,
-                            WindowManager.SWP_NOZORDER | WindowManager.SWP_NOACTIVATE | WindowManager.SWP_NOOWNERZORDER | WindowManager.SWP_SHOWWINDOW
-                        );
+                        if (new_width > 0 && new_height > 0)
+                        {
+                            IntPtr insertAfter = IntPtr.Zero;
+                            uint flags = WindowManager.SWP_NOACTIVATE | WindowManager.SWP_NOOWNERZORDER | WindowManager.SWP_SHOWWINDOW;
+                            
+                            IntPtr windowAboveDiscord = WindowManager.GetWindow(discordHwnd, WindowManager.GW_HWNDPREV);
+                            
+                            if (windowAboveDiscord == viewerHwnd)
+                            {
+                                // We are exactly above discord, don't change Z order
+                                flags |= WindowManager.SWP_NOZORDER;
+                            }
+                            else if (windowAboveDiscord != IntPtr.Zero)
+                            {
+                                // Insert us behind the window that is above discord
+                                insertAfter = windowAboveDiscord;
+                            }
+                            else
+                            {
+                                // Discord is the top-most window, put us at the very top
+                                insertAfter = IntPtr.Zero;
+                            }
+
+                            WindowManager.SetWindowPos(
+                                viewerHwnd,
+                                insertAfter,
+                                d_x + config.OFFSET_X,
+                                d_y + config.OFFSET_Y,
+                                new_width,
+                                new_height,
+                                flags
+                            );
+
+                            lastX = d_x; lastY = d_y;
+                            lastW = d_w; lastH = d_h;
+                        }
                     }
                 }
                 else
@@ -309,30 +379,14 @@ namespace DiscordStreamOverlay
 
         private void GlobalHotkey_HotkeyPressed(object sender, EventArgs e)
         {
+            if (!config.ATTACH_TO_DISCORD) return;
+
             isVisible = !isVisible;
             if (overlayForm != null && !overlayForm.IsDisposed)
             {
                 if (isVisible) WindowManager.ShowWindow(overlayForm.Handle, WindowManager.SW_SHOWNA);
                 else WindowManager.ShowWindow(overlayForm.Handle, WindowManager.SW_HIDE);
             }
-            else if (!config.ATTACH_TO_DISCORD && isVisible)
-            {
-                StartStreamCycle();
-            }
-        }
-
-        private void ModeHotkey_HotkeyPressed(object sender, EventArgs e)
-        {
-            config.ATTACH_TO_DISCORD = !config.ATTACH_TO_DISCORD;
-            ConfigManager.Save(config);
-
-            if (settingsForm != null && !settingsForm.IsDisposed)
-            {
-                settingsForm.UpdateAttachToggle(config.ATTACH_TO_DISCORD);
-            }
-
-            // Immediately restart the stream with new mode
-            TriggerRestart(null, null);
         }
 
         private void TriggerRestart(object sender, EventArgs e)

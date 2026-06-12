@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="..\assets\icon_s.ico" LogicalName="DiscordStreamOverlay.icon_s.ico" />
+    <EmbeddedResource Include="menu.html" LogicalName="DiscordStreamOverlay.menu.html" />
   </ItemGroup>
 
 </Project>

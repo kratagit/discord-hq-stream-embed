@@ -9,15 +9,19 @@ namespace DiscordStreamOverlay
     public class OverlayForm : Form
     {
         private WebView2 webView;
-        private string streamUrl;
+        private AppConfig config;
         private bool isStandalone;
         public bool IsFullscreenMode { get; private set; }
 
         public event EventHandler FullscreenStateChanged;
+        public event EventHandler<AppConfig> SettingsSaved;
+        public event EventHandler<int> PresetSaved;
+        public event EventHandler<int> PresetLoaded;
+        public event EventHandler ExitRequested;
 
-        public OverlayForm(string url, bool standalone = false, string windowTitle = "Stream", Icon appIcon = null)
+        public OverlayForm(AppConfig config, bool standalone = false, string windowTitle = "Stream", Icon appIcon = null)
         {
-            this.streamUrl = url;
+            this.config = config;
             this.isStandalone = standalone;
 
             if (isStandalone)
@@ -60,6 +64,16 @@ namespace DiscordStreamOverlay
             webView.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled = false;
 
             webView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
+            
+            webView.CoreWebView2.ContainsFullScreenElementChanged += (s, e) =>
+            {
+                bool isFs = webView.CoreWebView2.ContainsFullScreenElement;
+                if (isFs != IsFullscreenMode)
+                {
+                    IsFullscreenMode = isFs;
+                    FullscreenStateChanged?.Invoke(this, EventArgs.Empty);
+                }
+            };
 
             string htmlContent = $@"<!DOCTYPE html>
 <html>
@@ -82,42 +96,105 @@ namespace DiscordStreamOverlay
 </head>
 <body>
     <div class=""container"">
-        <iframe src=""{streamUrl}"" allow=""autoplay; fullscreen; camera; microphone"" allowfullscreen=""true"" webkitallowfullscreen=""true"" mozallowfullscreen=""true""></iframe>
+        <iframe src=""{config.STREAM_URL}"" allow=""autoplay; fullscreen; camera; microphone"" allowfullscreen=""true"" webkitallowfullscreen=""true"" mozallowfullscreen=""true""></iframe>
         
         <!-- Click absorbing layer -->
-        <div class=""click-shield"" oncontextmenu=""return false;""></div>
+        <div class=""click-shield"" oncontextmenu=""return false;"" ondblclick=""toggleNativeFs()""></div>
     </div>
 
     <script>
-        let lastFs = false;
-        function checkFs() {{
-            let isFs = !!document.fullscreenElement;
-            if (isFs !== lastFs) {{
-                lastFs = isFs;
-                window.chrome.webview.postMessage(isFs ? 'FS_ON' : 'FS_OFF');
+        function toggleNativeFs() {{
+            if (!document.fullscreenElement) {{
+                document.documentElement.requestFullscreen().catch(err => console.log(err));
+            }} else {{
+                document.exitFullscreen();
             }}
         }}
-        document.addEventListener('fullscreenchange', checkFs);
-        setInterval(checkFs, 200);
     </script>
+" + GetMenuHtml() + @"
 </body>
 </html>";
+
+            webView.CoreWebView2InitializationCompleted += (s, e) =>
+            {
+                webView.CoreWebView2.PostWebMessageAsJson("{\"type\":\"LOAD_CONFIG\",\"config\":" + System.Text.Json.JsonSerializer.Serialize(config) + "}");
+            };
 
             webView.NavigateToString(htmlContent);
         }
 
+        private string GetMenuHtml()
+        {
+            try
+            {
+                using (var stream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("DiscordStreamOverlay.menu.html"))
+                {
+                    if (stream != null)
+                    {
+                        using (var reader = new System.IO.StreamReader(stream))
+                        {
+                            return reader.ReadToEnd();
+                        }
+                    }
+                }
+            }
+            catch { }
+            return "";
+        }
+
         private void CoreWebView2_WebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs e)
         {
-            string msg = e.TryGetWebMessageAsString();
-            if (msg == "FS_ON" && !IsFullscreenMode)
+            try
             {
-                IsFullscreenMode = true;
-                FullscreenStateChanged?.Invoke(this, EventArgs.Empty);
+                string json = e.WebMessageAsJson;
+                if (string.IsNullOrEmpty(json) || json == "null")
+                {
+                    json = e.TryGetWebMessageAsString();
+                }
+                
+                using (var doc = System.Text.Json.JsonDocument.Parse(json))
+                {
+                    var root = doc.RootElement;
+                    if (root.TryGetProperty("type", out var typeProp))
+                    {
+                        string type = typeProp.GetString();
+                        
+                        if (type == "SAVE_AND_RESTART")
+                        {
+                            var cfgJson = root.GetProperty("config").GetRawText();
+                            var newConfig = System.Text.Json.JsonSerializer.Deserialize<AppConfig>(cfgJson);
+                            if (newConfig != null) SettingsSaved?.Invoke(this, newConfig);
+                        }
+                        else if (type == "SAVE_PRESET")
+                        {
+                            int presetId = root.GetProperty("presetId").GetInt32();
+                            var cfgJson = root.GetProperty("config").GetRawText();
+                            var newConfig = System.Text.Json.JsonSerializer.Deserialize<AppConfig>(cfgJson);
+                            if (newConfig != null)
+                            {
+                                config = newConfig; // Save to current config reference
+                                PresetSaved?.Invoke(this, presetId);
+                            }
+                        }
+                        else if (type == "LOAD_PRESET")
+                        {
+                            int presetId = root.GetProperty("presetId").GetInt32();
+                            PresetLoaded?.Invoke(this, presetId);
+                        }
+                        else if (type == "EXIT_APP")
+                        {
+                            ExitRequested?.Invoke(this, EventArgs.Empty);
+                        }
+                        else if (type == "REQUEST_CONFIG")
+                        {
+                            webView.CoreWebView2.PostWebMessageAsJson("{\"type\":\"LOAD_CONFIG\",\"config\":" + System.Text.Json.JsonSerializer.Serialize(config) + "}");
+                        }
+                    }
+                }
             }
-            else if (msg == "FS_OFF" && IsFullscreenMode)
+            catch (Exception ex)
             {
-                IsFullscreenMode = false;
-                FullscreenStateChanged?.Invoke(this, EventArgs.Empty);
+                Console.WriteLine("Error parsing web message: " + ex.Message);
             }
         }
 

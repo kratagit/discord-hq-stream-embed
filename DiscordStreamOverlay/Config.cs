@@ -19,7 +19,6 @@ namespace DiscordStreamOverlay
         public bool ATTACH_TO_DISCORD { get; set; } = true;
         public string STREAM_URL { get; set; } = "http://192.168.8.122:8889/stream";
         public string HOTKEY_TOGGLE_STREAM { get; set; } = "f7+f8";
-        public string HOTKEY_TOGGLE_MODE { get; set; } = "f8+f9";
         public string WINDOW_TITLE { get; set; } = "MY_STREAM";
         public int OFFSET_X { get; set; } = 325;
         public int OFFSET_Y { get; set; } = 38;

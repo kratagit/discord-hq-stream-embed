@@ -1,0 +1,441 @@
+<style>
+    /* CSS Variables for Glassmorphism */
+    :root {
+        --glass-bg: rgba(20, 20, 25, 0.75);
+        --glass-border: rgba(255, 255, 255, 0.1);
+        --text-main: #E0E0E0;
+        --accent: #5865F2; /* Discord blurple */
+        --accent-hover: #4752C4;
+        --danger: #ED4245;
+        --danger-hover: #C9383A;
+        --input-bg: rgba(0, 0, 0, 0.5);
+    }
+
+    /* Hamburger Button */
+    #hamburger-btn {
+        position: absolute;
+        top: 15px;
+        left: 15px;
+        width: 40px;
+        height: 40px;
+        background: var(--glass-bg);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid var(--glass-border);
+        border-radius: 8px;
+        cursor: pointer;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 5px;
+        transition: all 0.3s ease;
+        pointer-events: auto;
+    }
+    #hamburger-btn:hover {
+        background: rgba(40, 40, 50, 0.85);
+    }
+    #hamburger-btn div {
+        width: 20px;
+        height: 2px;
+        background-color: var(--text-main);
+        transition: all 0.3s ease;
+    }
+
+    /* Sidebar Menu */
+    #sidebar {
+        position: absolute;
+        top: 0;
+        left: -350px;
+        width: 320px;
+        height: 100%;
+        background: var(--glass-bg);
+        backdrop-filter: blur(15px);
+        -webkit-backdrop-filter: blur(15px);
+        border-right: 1px solid var(--glass-border);
+        z-index: 9998;
+        transition: left 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        display: flex;
+        flex-direction: column;
+        box-sizing: border-box;
+        padding: 60px 20px 20px 20px;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        color: var(--text-main);
+        overflow-y: auto;
+        pointer-events: auto;
+    }
+    #sidebar.open {
+        left: 0;
+    }
+
+    /* Form Elements */
+    .form-group {
+        margin-bottom: 15px;
+    }
+    .form-group label {
+        display: block;
+        font-size: 13px;
+        margin-bottom: 5px;
+        color: #B9BBBE;
+        font-weight: 600;
+    }
+    input[type="text"], input[type="number"] {
+        width: 100%;
+        padding: 8px 12px;
+        background: var(--input-bg);
+        border: 1px solid var(--glass-border);
+        border-radius: 4px;
+        color: var(--text-main);
+        font-size: 14px;
+        box-sizing: border-box;
+        outline: none;
+        transition: border-color 0.2s;
+    }
+    input[type="text"]:focus, input[type="number"]:focus {
+        border-color: var(--accent);
+    }
+    
+    .row {
+        display: flex;
+        gap: 10px;
+    }
+    .row .form-group {
+        flex: 1;
+    }
+
+    /* Toggle Switch */
+    .toggle-container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 15px;
+        background: rgba(0,0,0,0.2);
+        padding: 10px;
+        border-radius: 6px;
+        border: 1px solid var(--glass-border);
+    }
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 44px;
+        height: 24px;
+    }
+    .switch input { 
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background-color: #36393F;
+        transition: .4s;
+        border-radius: 24px;
+    }
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
+    input:checked + .slider {
+        background-color: var(--accent);
+    }
+    input:checked + .slider:before {
+        transform: translateX(20px);
+    }
+
+    /* Buttons */
+    button {
+        width: 100%;
+        padding: 10px;
+        border: none;
+        border-radius: 4px;
+        font-size: 14px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: background 0.2s;
+        color: white;
+    }
+    .btn-primary {
+        background: var(--accent);
+        margin-top: 10px;
+    }
+    .btn-primary:hover {
+        background: var(--accent-hover);
+    }
+    .btn-danger {
+        background: var(--danger);
+        margin-top: 10px;
+    }
+    .btn-danger:hover {
+        background: var(--danger-hover);
+    }
+
+    /* Presets */
+    .presets-container {
+        background: rgba(0,0,0,0.2);
+        padding: 10px;
+        border-radius: 6px;
+        border: 1px solid var(--glass-border);
+        margin-bottom: 15px;
+    }
+    .preset-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+    }
+    .preset-row:last-child {
+        margin-bottom: 0;
+    }
+    .preset-row span {
+        font-size: 13px;
+        font-weight: 600;
+    }
+    .preset-actions {
+        display: flex;
+        gap: 5px;
+    }
+    .btn-sm {
+        width: auto;
+        padding: 4px 10px;
+        font-size: 12px;
+        background: #4F545C;
+    }
+    .btn-sm:hover {
+        background: #686D73;
+    }
+
+    /* Message banner */
+    #status-msg {
+        font-size: 12px;
+        color: #43B581;
+        text-align: center;
+        min-height: 15px;
+        margin-bottom: 10px;
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+        width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+        background: rgba(0,0,0,0.1); 
+    }
+    ::-webkit-scrollbar-thumb {
+        background: rgba(255,255,255,0.2); 
+        border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+        background: rgba(255,255,255,0.3); 
+    }
+</style>
+
+<div id="hamburger-btn" onclick="toggleMenu()">
+    <div id="line1"></div>
+    <div id="line2"></div>
+    <div id="line3"></div>
+</div>
+
+<div id="sidebar">
+    <div id="status-msg">Settings loaded</div>
+    
+    <div class="form-group">
+        <label>Stream URL</label>
+        <input type="text" id="streamUrl" placeholder="https://...">
+    </div>
+
+    <div class="toggle-container">
+        <label style="margin:0; font-size:14px; font-weight:600; color:#E0E0E0;">Attach to Discord</label>
+        <label class="switch">
+            <input type="checkbox" id="attachToggle">
+            <span class="slider"></span>
+        </label>
+    </div>
+
+    <div class="row">
+        <div class="form-group">
+            <label>Toggle Stream Key</label>
+            <input type="text" id="hotkeyStream" placeholder="e.g. F8">
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="form-group">
+            <label>Offset X</label>
+            <input type="number" id="offsetX" value="0">
+        </div>
+        <div class="form-group">
+            <label>Offset Y</label>
+            <input type="number" id="offsetY" value="0">
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="form-group">
+            <label>Margin Right</label>
+            <input type="number" id="marginRight" value="0">
+        </div>
+        <div class="form-group">
+            <label>Margin Bottom</label>
+            <input type="number" id="marginBottom" value="0">
+        </div>
+    </div>
+
+    <label style="display:block; font-size:13px; margin-bottom:5px; color:#B9BBBE; font-weight:600;">Presets</label>
+    <div class="presets-container">
+        <div class="preset-row">
+            <span>Preset 1</span>
+            <div class="preset-actions">
+                <button class="btn-sm" onclick="savePreset(1)">Save</button>
+                <button class="btn-sm" onclick="loadPreset(1)">Load</button>
+            </div>
+        </div>
+        <div class="preset-row">
+            <span>Preset 2</span>
+            <div class="preset-actions">
+                <button class="btn-sm" onclick="savePreset(2)">Save</button>
+                <button class="btn-sm" onclick="loadPreset(2)">Load</button>
+            </div>
+        </div>
+        <div class="preset-row">
+            <span>Preset 3</span>
+            <div class="preset-actions">
+                <button class="btn-sm" onclick="savePreset(3)">Save</button>
+                <button class="btn-sm" onclick="loadPreset(3)">Load</button>
+            </div>
+        </div>
+    </div>
+
+    <button class="btn-primary" onclick="saveAndRestart()">Save and Restart Stream</button>
+    
+    <div style="flex-grow: 1;"></div>
+    
+    <button class="btn-danger" onclick="exitApp()" style="margin-bottom: 10px;">Exit Application</button>
+</div>
+
+<script>
+    let currentConfig = null;
+    let hideTimeout = null;
+
+    function resetHideTimer() {
+        const btn = document.getElementById('hamburger-btn');
+        btn.style.opacity = '1';
+        
+        clearTimeout(hideTimeout);
+        hideTimeout = setTimeout(() => {
+            const sidebar = document.getElementById('sidebar');
+            if (!sidebar.classList.contains('open')) {
+                btn.style.opacity = '0';
+            }
+        }, 2000); // Hide after 2 seconds of inactivity
+    }
+
+    document.addEventListener('mousemove', resetHideTimer);
+    resetHideTimer(); // Start the timer initially
+
+    function toggleMenu() {
+        const sidebar = document.getElementById('sidebar');
+        const l1 = document.getElementById('line1');
+        const l2 = document.getElementById('line2');
+        const l3 = document.getElementById('line3');
+        
+        if (sidebar.classList.contains('open')) {
+            sidebar.classList.remove('open');
+            l1.style.transform = 'none';
+            l2.style.opacity = '1';
+            l3.style.transform = 'none';
+            resetHideTimer(); // Resume hiding logic when closed
+        } else {
+            sidebar.classList.add('open');
+            l1.style.transform = 'rotate(45deg) translate(5px, 5px)';
+            l2.style.opacity = '0';
+            l3.style.transform = 'rotate(-45deg) translate(5px, -4px)';
+            clearTimeout(hideTimeout); // Stop hiding logic while open
+            document.getElementById('hamburger-btn').style.opacity = '1';
+        }
+    }
+
+    function showStatus(msg, isError = false) {
+        const el = document.getElementById('status-msg');
+        el.innerText = msg;
+        el.style.color = isError ? '#ED4245' : '#43B581';
+        el.style.opacity = 1;
+        setTimeout(() => el.style.opacity = 0, 3000);
+    }
+
+    function requestConfig() {
+        if (window.chrome && window.chrome.webview && window.chrome.webview.postMessage) {
+            window.chrome.webview.postMessage({ type: 'REQUEST_CONFIG' });
+        } else {
+            setTimeout(requestConfig, 50);
+        }
+    }
+    
+    // Request config as soon as the DOM and WebView2 bridge are ready
+    document.addEventListener('DOMContentLoaded', requestConfig);
+
+    // Listen to messages from C#
+    window.chrome.webview.addEventListener('message', event => {
+        if (event.data && event.data.type === 'LOAD_CONFIG') {
+            currentConfig = event.data.config;
+            populateForm(currentConfig);
+        }
+    });
+
+    function populateForm(cfg) {
+        document.getElementById('streamUrl').value = cfg.STREAM_URL || '';
+        document.getElementById('attachToggle').checked = cfg.ATTACH_TO_DISCORD;
+        document.getElementById('hotkeyStream').value = cfg.HOTKEY_TOGGLE_STREAM || 'F9';
+        document.getElementById('offsetX').value = cfg.OFFSET_X || 0;
+        document.getElementById('offsetY').value = cfg.OFFSET_Y || 0;
+        document.getElementById('marginRight').value = cfg.MARGIN_RIGHT || 0;
+        document.getElementById('marginBottom').value = cfg.MARGIN_BOTTOM || 0;
+    }
+
+    function gatherForm() {
+        let cfg = currentConfig ? JSON.parse(JSON.stringify(currentConfig)) : {};
+        cfg.STREAM_URL = document.getElementById('streamUrl').value;
+        cfg.ATTACH_TO_DISCORD = document.getElementById('attachToggle').checked;
+        cfg.HOTKEY_TOGGLE_STREAM = document.getElementById('hotkeyStream').value;
+        cfg.OFFSET_X = parseInt(document.getElementById('offsetX').value) || 0;
+        cfg.OFFSET_Y = parseInt(document.getElementById('offsetY').value) || 0;
+        cfg.MARGIN_RIGHT = parseInt(document.getElementById('marginRight').value) || 0;
+        cfg.MARGIN_BOTTOM = parseInt(document.getElementById('marginBottom').value) || 0;
+        return cfg;
+    }
+
+    function saveAndRestart() {
+        let cfg = gatherForm();
+        if (cfg) {
+            window.chrome.webview.postMessage({ type: 'SAVE_AND_RESTART', config: cfg });
+            toggleMenu(); // Close menu
+        }
+    }
+
+    function savePreset(num) {
+        let cfg = gatherForm();
+        if (cfg) {
+            window.chrome.webview.postMessage({ type: 'SAVE_PRESET', presetId: num, config: cfg });
+            showStatus('Preset ' + num + ' saved!');
+        }
+    }
+
+    function loadPreset(num) {
+        window.chrome.webview.postMessage({ type: 'LOAD_PRESET', presetId: num });
+    }
+
+    function exitApp() {
+        window.chrome.webview.postMessage({ type: 'EXIT_APP' });
+    }
+</script>

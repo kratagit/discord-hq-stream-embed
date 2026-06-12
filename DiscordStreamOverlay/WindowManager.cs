@@ -5,8 +5,28 @@ using System.Drawing;
 
 namespace DiscordStreamOverlay
 {
+    [ComImport]
+    [Guid("56FDF342-FD6D-11d0-958A-006097C9A090")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    public interface ITaskbarList
+    {
+        [PreserveSig] void HrInit();
+        [PreserveSig] void AddTab(IntPtr hwnd);
+        [PreserveSig] void DeleteTab(IntPtr hwnd);
+        [PreserveSig] void ActivateTab(IntPtr hwnd);
+        [PreserveSig] void SetActiveAlt(IntPtr hwnd);
+    }
+
+    [ComImport]
+    [Guid("56FDF344-FD6D-11d0-958A-006097C9A090")]
+    public class TaskbarList { }
+
     public static class WindowManager
     {
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern IntPtr GetWindow(IntPtr hWnd, uint uCmd);
+        public const uint GW_HWNDPREV = 3;
+
         [DllImport("user32.dll")]
         public static extern bool EnumWindows(EnumWindowsProc enumProc, IntPtr lParam);
         public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
@@ -124,6 +144,8 @@ namespace DiscordStreamOverlay
 
         [DllImport("user32.dll")]
         public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+        [DllImport("user32.dll")]
+        public static extern bool SetForegroundWindow(IntPtr hWnd);
         public const int SW_HIDE = 0;
         public const int SW_SHOW = 5;
         public const int SW_SHOWNA = 8;
