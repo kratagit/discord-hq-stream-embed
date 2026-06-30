@@ -2,15 +2,20 @@
 
 A lightweight and intuitive tool that allows you to watch streams with ultra-low latency (**< 100ms**).
 
-The application allows you to "stick" the video preview directly to the Discord window on Windows (10/11) systems or display it in a dedicated, clean window on Linux systems. The video stream is fetched directly from a streamer using OBS and the WHIP (WebRTC) / HLS protocol.
+The application allows you to watch the video stream in a clean, borderless window on Windows (10/11) systems with an optional feature to "attach" it directly to other applications like Discord, or display it in a dedicated app mode on Linux systems. The video stream is fetched directly from a streamer using OBS and the WHIP (WebRTC) / HLS protocol.
 
 ---
 
 ## ✨ Key Features
 - **Ultra-low latency** (<100ms) thanks to modern protocol support.
-- **Windows**: An intelligent overlay rendered directly over the Discord window.
+- **Windows**: A borderless, floating window with an optional intelligent overlay mode that can attach directly to other applications like Discord.
 - **Linux**: A dedicated app mode (`--app`) powered by the Chromium engine (clean window, no browser interface).
 - **Optimized interface**: Isolated browser profiles and a built-in "click-shield" to prevent accidental video pausing.
+
+---
+
+## 🌐 Network Requirements (Important!)
+The application relies on a direct connection (P2P / self-hosted) between the streamer's server and the viewer. For the tool to work over the internet, you must have direct network visibility (VPN or port forwarding).
 
 ---
 
@@ -81,9 +86,40 @@ On both Windows and Linux, your settings are saved in the `config.json` file:
 
 ## 📡 Streamer Requirements
 
-For this tool to work, the broadcaster (streamer) must generate and share a web stream link (WebRTC or HLS) with you. The tool is compatible with solutions such as:
-- **MediaMTX**
-- **OBS WebRTC**
-- **Nginx-RTMP** (with HLS output)
+In order for viewers to watch your stream with ultra-low latency, you need to provide them with a preview via an appropriate server.
 
-As a viewer, you only need the URL received from the streamer (e.g., `http://192.168.x.x:8889/stream`).
+The operation of the tool has been **officially confirmed with the MediaMTX server**. However, the tool is universal and should work with other solutions, such as:
+- ✅ **MediaMTX** (recommended, built-in WebRTC/WHIP support)
+- **OBS WebRTC**
+- **Nginx-RTMP** (with HLS output - higher latency)
+
+### How to configure streaming in OBS Studio (WHIP)
+
+If you are using a server like MediaMTX, configuring OBS Studio is incredibly simple and requires no additional plugins.
+
+1. Ensure your server (e.g., MediaMTX) is running and ready to accept connections.
+2. Open **OBS Studio** and go to **Settings**.
+3. Navigate to the **Stream** tab.
+4. From the **Service** dropdown list, select **WHIP**.
+5. In the **Server** field, paste the publishing URL. This address usually needs to contain a parameter to reduce server buffering to a minimum. It should look something like this:
+   
+   `http://192.168.x.x:8889/stream/whip?buffer=0`
+   *(Change the IP address to your virtual VPN address, public, or local address, depending on your chosen connection method).*
+
+6. You can leave the **Bearer Token** field empty.
+7. Click **Apply** and **Start Streaming**.
+
+### Output Configuration in OBS
+
+For everything to run smoothly and without errors in the viewers' browsers, avoid overcomplicating things with unusual encoders. Go to the **Output** -> **Streaming** tab and ensure you have the following parameters set:
+* **Video Encoder:** A **hardware H.264 encoder** is recommended (e.g., NVIDIA NVENC H.264 or AMD HW H.264). You can use CPU encoding (x264), but it involves a significant CPU load and worse performance.
+* **Audio Encoder:** Select **FFmpeg Opus**.
+* **Rate Control:** Set to **CBR** (Constant Bitrate).
+
+Example configuration confirmed to work:
+
+![OBS Output Configuration](insert-link-to-your-screenshot-here.png)
+
+### Viewing Link (for the viewer)
+Remember that you must give your viewers the **viewing link** (WebRTC/WHEP), not the broadcasting link (WHIP). If you send the stream in OBS to an address ending with `/whip`, the viewer should enter the main address in the WhipCast app, e.g.:
+`http://192.168.x.x:8889/stream`
