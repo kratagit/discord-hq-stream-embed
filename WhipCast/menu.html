@@ -18,19 +18,48 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        @keyframes dot-pulse {
+            0%, 100% { opacity: 0.2; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+        .loading-dots {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            margin: 15px 0 25px 0;
+        }
+        .loading-dots div {
+            width: 6px;
+            height: 6px;
+            background-color: #5865f2;
+            border-radius: 50%;
+            opacity: 0.2;
+            animation: dot-pulse 2s infinite ease-in-out;
+        }
+        .loading-dots div:nth-child(2) {
+            animation-delay: 0.4s;
+        }
+        .loading-dots div:nth-child(3) {
+            animation-delay: 0.8s;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <iframe src="__STREAM_URL__" allow="autoplay; fullscreen; camera; microphone" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"></iframe>
         
-        <div id="offlineScreen" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(15, 15, 18, 0.98); flex-direction: column; align-items: center; justify-content: center; z-index: 996; text-align: center; color: #9ca3af; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; box-sizing: border-box; padding: 20px;">
+        <div id="offlineScreen" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: #0f0f12; flex-direction: column; align-items: center; justify-content: center; z-index: 996; text-align: center; color: #9ca3af; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; box-sizing: border-box; padding: 20px;">
             <div style="font-size: 24px; font-weight: 700; margin-bottom: 8px; color: #f3f4f6;">Stream is Offline</div>
             <div style="margin-bottom: 20px; max-width: 400px; line-height: 1.5;">The streamer has not started broadcasting yet, or the stream has ended.</div>
+            <div class="loading-dots">
+                <div></div>
+                <div></div>
+                <div></div>
+            </div>
             <div style="font-size: 13px; font-weight: 600; color: #5865f2;">Auto-reconnecting when stream goes live...</div>
         </div>
         
-        <div id="connectingScreen" style="display: flex; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(15, 15, 18, 0.98); flex-direction: column; align-items: center; justify-content: center; z-index: 996; text-align: center; color: #9ca3af; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; box-sizing: border-box; padding: 20px;">
+        <div id="connectingScreen" style="display: flex; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: #0f0f12; flex-direction: column; align-items: center; justify-content: center; z-index: 996; text-align: center; color: #9ca3af; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; box-sizing: border-box; padding: 20px;">
             <div style="font-size: 24px; font-weight: 700; margin-bottom: 8px; color: #f3f4f6;">Connecting to Stream</div>
             <div style="margin-bottom: 20px; max-width: 400px; line-height: 1.5;">Establishing a secure Peer-to-Peer connection...</div>
             <div style="border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid #5865f2; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite;"></div>
@@ -108,6 +137,22 @@
     }
     #sidebar.open {
         left: 0;
+    }
+
+    /* Sidebar Logo */
+    .sidebar-logo {
+        position: absolute;
+        top: 9px;
+        left: 55px;
+        width: 265px;
+        text-align: center;
+        font-size: 37px;
+        font-weight: 800;
+        letter-spacing: 2px;
+        background: linear-gradient(90deg, #5865f2, #a7b0f6);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        text-transform: uppercase;
     }
 
     /* Form Elements */
@@ -289,6 +334,7 @@
 </div>
 
 <div id="sidebar">
+    <div class="sidebar-logo">WHIPCAST</div>
     <div id="status-msg">Settings loaded</div>
     
     <!-- STREAM URL -->

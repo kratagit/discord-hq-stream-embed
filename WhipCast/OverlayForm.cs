@@ -5,11 +5,27 @@ using System.Text.Json;
 using System.Collections.Generic;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
+using System.Runtime.InteropServices;
 
 namespace WhipCast
 {
     public class OverlayForm : Form
     {
+        [DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+        private const int DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1 = 19;
+        private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+
+        private void UseImmersiveDarkMode()
+        {
+            if (Environment.OSVersion.Version.Major >= 10 && Environment.OSVersion.Version.Build >= 17763)
+            {
+                var attribute = Environment.OSVersion.Version.Build >= 18985 ? DWMWA_USE_IMMERSIVE_DARK_MODE : DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1;
+                int useImmersiveDarkMode = 1;
+                DwmSetWindowAttribute(this.Handle, attribute, ref useImmersiveDarkMode, sizeof(int));
+            }
+        }
+
         private WebView2 webView;
         private AppConfig currentConfig;
         public bool IsFullscreenMode { get; private set; }
@@ -30,6 +46,8 @@ namespace WhipCast
                 this.ShowInTaskbar = true;
                 this.Text = "WhipCast - " + config.STREAM_URL;
                 if (appIcon != null) this.Icon = appIcon;
+                
+                UseImmersiveDarkMode();
                 this.TopMost = false;
                 this.StartPosition = FormStartPosition.CenterScreen;
                 this.ClientSize = new Size(1280, 720);
