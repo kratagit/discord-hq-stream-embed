@@ -1,87 +1,89 @@
-# ?? WhipCast
+# üì∫ WhipCast
 
-Lekkie i intuicyjne narzedzie pozwalajace na ogladanie streamÛw z ultra niskim opÛznieniem (**< 100ms**). 
+A lightweight and intuitive tool that allows you to watch streams with ultra-low latency (**< 100ms**).
 
-Aplikacja pozwala na Ñprzyklejenieî podgladu wideo bezposrednio do okna whip-casta w systemach Windows (10/11) lub wyswietlenie go w dedykowanym, czystym oknie na systemach Linux. Strumien wideo pobierany jest bezposrednio od streamera korzystajacego z OBS i protokolu WHIP (WebRTC) / HLS.
-
----
-
-## ? GlÛwne funkcje
-- **Ultra niskie opÛznienie** (<100ms) dzieki obsludze nowoczesnych protokolÛw.
-- **Windows**: Inteligentny overlay renderowany bezposrednio nad oknem whip-casta.
-- **Linux**: Dedykowany tryb aplikacji (`--app`) w oparciu o silnik Chromium (czyste okno, bez interfejsu przegladarki).
-- **Zoptymalizowany interfejs**: Izolowane profile przegladarki i wbudowana "tarcza" (click-shield) zapobiegajaca przypadkowemu pauzowaniu wideo.
+The application allows you to "stick" the video preview directly to the Discord window on Windows (10/11) systems or display it in a dedicated, clean window on Linux systems. The video stream is fetched directly from a streamer using OBS and the WHIP (WebRTC) / HLS protocol.
 
 ---
 
-## ?? Szybki start (dla widza)
+## ‚ú® Key Features
+- **Ultra-low latency** (<100ms) thanks to modern protocol support.
+- **Windows**: An intelligent overlay rendered directly over the Discord window.
+- **Linux**: A dedicated app mode (`--app`) powered by the Chromium engine (clean window, no browser interface).
+- **Optimized interface**: Isolated browser profiles and a built-in "click-shield" to prevent accidental video pausing.
 
-### ?? Windows (10 / 11)
+---
 
-1. Pobierz najnowsza wersje `.exe` z zakladki **[Releases](../../releases)**.
-2. Uruchom pobrany plik `whip-cast.exe`.
-3. OtwÛrz aplikacje whip-cast.
-4. W zasobniku systemowym (obok zegara) znajdz ikone aplikacji, kliknij ja prawym przyciskiem myszy i wybierz **Options**.
-5. Wklej link otrzymany od streamera w polu **Stream URL** i kliknij **Save**.
-6. Gdy streamer rozpocznie nadawanie, obraz pojawi sie automatycznie na Twoim whip-castzie!
+## üöÄ Quick Start (for viewers)
 
-> **Uwaga:** Przy pierwszym uruchomieniu filtr Windows SmartScreen moze zablokowac aplikacje. Nalezy kliknac *ÑWiecej informacjiî* -> *ÑUruchom mimo toî*.
+### üñ•Ô∏è Windows (10 / 11)
 
-### ?? Linux
+1. Download the latest `.exe` version from the **[Releases](../../releases)** tab.
+2. Run the downloaded `WhipCast-...-Windows-x64.exe` file.
+3. Open the Discord application.
+4. Hover over the top-left corner of the stream overlay to reveal the hamburger menu (‚â°) and click it to open settings.
+5. Paste the link received from the streamer into the **Stream URL** field and click **Save and restart stream**.
+6. When the streamer starts broadcasting, the video will automatically appear on your Discord!
 
-Wersja na systemy Linux dziala jako samodzielna, minimalistyczna aplikacja internetowa z wykorzystaniem silnika Chromium. 
+> **Note:** On the first launch, the Windows SmartScreen filter might block the application. You need to click *"More info"* -> *"Run anyway"*.
 
-1. Pobierz plik wykonywalny dla systemu Linux (np. AppImage) z zakladki **[Releases](../../releases)**.
-2. Nadaj mu prawa do wykonywania: `chmod +x whip-cast-linux`.
-3. Skonfiguruj lub uruchom stream prosto z terminala:
+### üêß Linux
+
+The Linux version runs as a standalone, minimalist web application using the Chromium engine.
+
+1. Download the Linux executable (e.g., `WhipCast-...-Linux-x86_64`) from the **[Releases](../../releases)** tab.
+2. Grant it execution permissions: `chmod +x WhipCast-*-Linux-x86_64`.
+3. Configure or start the stream directly from the terminal:
 
 ```bash
-# Uruchomienie z konkretnym linkiem i rozmiarem okna
-./whip-cast-linux http://link-do-streamu/stream 1280 720
+# Launch with a specific link and window size
+./WhipCast-1.0.0-Linux-x86_64 http://stream-link/stream 1280 720
 
-# Zapisanie samej konfiguracji (bez uruchamiania)
-./whip-cast-linux http://link-do-streamu/stream --save-only
+# Save configuration only (without launching)
+./WhipCast-1.0.0-Linux-x86_64 http://stream-link/stream --save-only
 ```
-4. Przy kolejnych uruchomieniach wystarczy kliknac plik dwukrotnie (lub uruchomic bez argumentÛw) ñ aplikacja zapamieta ostatnie ustawienia.
+4. For subsequent launches, simply double-click the file (or run it without arguments) ‚Äì the application will remember your last settings.
 
 ---
 
-## ??? Konfiguracja i dzialanie
+## üõ†Ô∏è Configuration and Usage
 
-### Windows (GUI w trayu)
-- **Stream URL** - Adres sieciowy strumienia.
-- **Offset X / Offset Y** - Precyzyjne przesuniecie obrazu od lewej/gÛrnej krawedzi okna whip-casta.
-- **Margin Right / Margin Bottom** - Marginesy ustalajace wielkosc wideo.
-- **Presets 1 / 2 / 3** - Przyciski do szybkiego przelaczania sie miedzy zapisanymi profilami ustawien.
-- **Hotkey** - SkrÛt klawiszowy do blyskawicznego pokazywania/ukrywania overlayu (domyslnie `F7 + F8`).
+### Windows (In-App Menu)
+- **Stream URL** - The network address of the stream.
+- **Attach to window** - Toggle attaching the overlay to the Discord window.
+- **Toggle Stream Key** - Keyboard shortcut to instantly show/hide the overlay (default `F9`).
+- **Toggle Mode Key** - Keyboard shortcut to switch between window sizes/modes (default `F8+F9`).
+- **Offset X / Offset Y** - Precise image offset from the left/top edge of the Discord window.
+- **Margin Right / Margin Bottom** - Margins that determine the video size.
+- **Presets 1 / 2 / 3** - Buttons for quickly switching between saved settings profiles.
 
-*Po kliknieciu przycisku **Save**, overlay zrestartuje sie automatycznie z nowymi parametrami.*
+*After clicking the **Save and restart stream** button, the overlay will automatically restart with the new parameters.*
 
-### Linux (SzczegÛly techniczne i CLI)
-Wersja linuksowa posiada kilka zaawansowanych mechanizmÛw pod maska:
-- **Wymagania:** Do dzialania wymagana jest dowolna przegladarka oparta na Chromium (Chrome, Chromium, Brave, Edge, Vivaldi). Jesli nie zostanie znaleziona, program awaryjnie otworzy link w domyslnej przegladarce systemu.
-- **Izolowany profil:** Aplikacja tworzy wlasny profil przegladarki. Dzieki temu Twoje wtyczki (np. adblocki, wtyczki cashback) nie ingeruja w strumien i nie psuja okna.
-- **Tarcza klikniec (Click-Shield):** Wygenerowany odtwarzacz posiada nalozona niewidzialna warstwe ochronna. Blokuje ona przypadkowe klikniecia (i pauzowanie) na srodku wideo, ale zostawia wolne 52 piksele na dole ekranu, pozwalajac na swobodne korzystanie z paska glosnosci czy trybu pelnoekranowego.
+### Linux (Technical Details and CLI)
+The Linux version features several advanced mechanisms under the hood:
+- **Requirements:** Any Chromium-based browser (Chrome, Chromium, Brave, Edge, Vivaldi) is required to run. If none is found, the program will fall back to opening the link in the system's default browser.
+- **Isolated profile:** The application creates its own browser profile. This ensures that your plugins (e.g., adblockers, cashback extensions) do not interfere with the stream or break the window.
+- **Click-Shield:** The generated player has an invisible protective layer on top. It blocks accidental clicks (and pausing) in the middle of the video, but leaves 52 pixels free at the bottom of the screen, allowing you to freely use the volume bar or fullscreen mode.
 
-**Dostepne parametry CLI (Linux):**
-Skladnia: `[URL] [Szerokosc][Wysokosc] [--save-only]`
+**Available CLI parameters (Linux):**
+Syntax: `[URL] [Width][Height] [--save-only]`
 
-Mozesz je dowolnie mieszac, np.:
-- Zmiana samego rozmiaru okna: `./app 1920 1080`
-- Zmiana samego linku i zapis: `./app http://nowy-link --save-only`
+You can mix them freely, e.g.:
+- Change only the window size: `./app 1920 1080`
+- Change only the link and save: `./app http://new-link --save-only`
 
-### ?? Gdzie zapisywana jest konfiguracja?
-ZarÛwno na Windowsie, jak i na Linuxie, Twoje ustawienia zapisywane sa w pliku `config.json`:
+### üìÅ Where is the configuration saved?
+On both Windows and Linux, your settings are saved in the `config.json` file:
 - **Windows:** `%APPDATA%\whip-cast\config.json`
 - **Linux:** `~/.config/whip-cast/config.json`
 
 ---
 
-## ?? Wymagania po stronie streamera
+## üì° Streamer Requirements
 
-Aby to narzedzie zadzialalo, osoba nadajaca (streamer) musi wygenerowac i udostepnic Ci link do strumienia webowego (WebRTC lub HLS). Narzedzie jest kompatybilne z takimi rozwiazaniami jak:
+For this tool to work, the broadcaster (streamer) must generate and share a web stream link (WebRTC or HLS) with you. The tool is compatible with solutions such as:
 - **MediaMTX**
 - **OBS WebRTC**
-- **Nginx-RTMP** (z wyjsciem HLS)
+- **Nginx-RTMP** (with HLS output)
 
-Jako widz potrzebujesz wylacznie otrzymanego od streamera adresu URL (np. `http://192.168.x.x:8889/stream`).
+As a viewer, you only need the URL received from the streamer (e.g., `http://192.168.x.x:8889/stream`).
