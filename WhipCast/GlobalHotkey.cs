@@ -5,7 +5,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
-namespace DiscordStreamOverlay
+namespace WhipCast
 {
     public class GlobalHotkey : IDisposable
     {

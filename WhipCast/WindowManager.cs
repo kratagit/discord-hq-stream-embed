@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Drawing;
 
-namespace DiscordStreamOverlay
+namespace WhipCast
 {
     public static class WindowManager
     {
@@ -151,7 +151,7 @@ namespace DiscordStreamOverlay
         public static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
 
 
-        public static IntPtr FindDiscordWindow()
+        public static IntPtr FindTargetWindow()
         {
             IntPtr found = IntPtr.Zero;
             EnumWindows((hWnd, lParam) =>

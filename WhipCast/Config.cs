@@ -4,7 +4,7 @@ using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace DiscordStreamOverlay
+namespace WhipCast
 {
     public class Preset
     {
@@ -16,7 +16,7 @@ namespace DiscordStreamOverlay
 
     public class AppConfig
     {
-        public bool ATTACH_TO_DISCORD { get; set; } = true;
+        public bool ATTACH_TO_WINDOW { get; set; } = true;
         public string STREAM_URL { get; set; } = "http://192.168.8.122:8889/stream";
         public string HOTKEY_TOGGLE_STREAM { get; set; } = "f7+f8";
         public string HOTKEY_TOGGLE_MODE { get; set; } = "f8+f9";
@@ -35,7 +35,7 @@ namespace DiscordStreamOverlay
 
     public static class ConfigManager
     {
-        private static readonly string AppName = "Discord_Stream_Overlay";
+        private static readonly string AppName = "whip-cast";
         private static string ConfigDir => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), AppName);
         private static string ConfigFile => Path.Combine(ConfigDir, "config.json");
 
