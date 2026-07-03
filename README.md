@@ -1,111 +1,123 @@
-# 📺 Discord Stream Overlay
+# 📺 WhipCast
 
-Lekkie i intuicyjne narzędzie pozwalające na oglądanie streamów z ultra niskim opóźnieniem (**< 100ms**). 
+A lightweight and intuitive tool that allows you to watch streams with ultra-low latency (**< 100ms**).
 
-Aplikacja pozwala na „przyklejenie” podglądu wideo bezpośrednio do okna Discorda w systemach Windows (10/11) lub wyświetlenie go w dedykowanym, czystym oknie na systemach Linux. Strumień wideo pobierany jest bezpośrednio od streamera korzystającego z OBS i protokołu WHIP (WebRTC).
-
----
-
-## ✨ Główne funkcje
-- **Ultra niskie opóźnienie** (<100ms) dzięki obsłudze nowoczesnych protokołów.
-- **Windows**: Inteligentny overlay renderowany bezpośrednio nad oknem Discorda.
-- **Linux**: Dedykowany tryb aplikacji (`--app`) w oparciu o silnik Chromium (czyste okno, bez interfejsu przeglądarki).
-- **Zoptymalizowany interfejs**: Izolowane profile przeglądarki i wbudowana "tarcza" (click-shield) zapobiegająca przypadkowemu pauzowaniu wideo.
+The application allows you to watch the video stream in a clean, borderless window on Windows (10/11) systems with an optional feature to "attach" it directly to other applications like Discord, or display it in a dedicated app mode on Linux systems. The video stream is fetched directly from a streamer using OBS and the WHIP (WebRTC) / HLS protocol.
 
 ---
 
-## 🌐 Wymagania sieciowe (Ważne!)
-Aplikacja opiera się na bezpośrednim połączeniu (P2P / self-hosted) między serwerem streamera a widzem. Aby narzędzie działało przez Internet, musicie posiadać bezpośrednią widoczność w sieci (VPN lub przekierowanie portów).
+## ✨ Key Features
+- **Ultra-low latency** (<100ms) thanks to modern protocol support.
+- **Windows**: A borderless, floating window with an optional intelligent overlay mode that can attach directly to other applications like Discord.
+- **Linux**: A dedicated app mode (`--app`) powered by the Chromium engine (clean window, no browser interface).
+- **Optimized interface**: Isolated browser profiles and a built-in "click-shield" to prevent accidental video pausing.
 
 ---
 
-## 👁️ Po stronie widza (Odbiorcy)
+## 🌐 Network Requirements (Important!)
+The application relies on a direct connection (P2P / self-hosted) between the streamer's server and the viewer. For the tool to work over the internet, you must have direct network visibility (VPN or port forwarding).
 
-Jako widz potrzebujesz wyłącznie pobrać tę aplikację i wkleić w niej link otrzymany od streamera.
+---
 
-### 🪟 Windows (10 / 11)
+## 🚀 Quick Start (for viewers)
 
-1. Pobierz najnowszą wersję `.exe` z zakładki **[Releases](../../releases)**.
-2. Uruchom pobrany plik `Discord_Stream_Overlay-1.x.x-Windows-x86_64.exe`.
-3. Otwórz aplikację Discord.
-4. W zasobniku systemowym (obok zegara) znajdź ikonę aplikacji, kliknij ją prawym przyciskiem myszy i wybierz **Options**.
-5. Wklej link otrzymany od streamera (np. `http://192.168.x.x:8889/stream` lub adres z VPN) w polu **Stream URL** i kliknij **Save**.
-6. Gdy streamer rozpocznie nadawanie, obraz pojawi się automatycznie na Twoim Discordzie!
+### 🖥️ Windows (10 / 11)
 
-> **Uwaga:** Przy pierwszym uruchomieniu filtr Windows SmartScreen może zablokować aplikację. Należy kliknąć *„Więcej informacji”* -> *„Uruchom mimo to”*.
+1. Download the latest `.exe` version from the **[Releases](../../releases)** tab.
+2. Run the downloaded `WhipCast-...-Windows-x64.exe` file.
+3. Open the Discord application.
+4. Hover over the top-left corner of the stream overlay to reveal the hamburger menu (≡) and click it to open settings.
+5. Paste the link received from the streamer into the **Stream URL** field and click **Save and restart stream**.
+6. When the streamer starts broadcasting, the video will automatically appear on your Discord!
+
+> **Note:** On the first launch, the Windows SmartScreen filter might block the application. You need to click *"More info"* -> *"Run anyway"*.
 
 ### 🐧 Linux
 
-Wersja na systemy Linux działa jako samodzielna, minimalistyczna aplikacja internetowa z wykorzystaniem silnika Chromium. 
+The Linux version runs as a standalone, minimalist web application using the Chromium engine.
 
-1. Pobierz plik wykonywalny dla systemu Linux z zakładki **[Releases](../../releases)**.
-2. Skonfiguruj lub uruchom stream prosto z terminala:
+1. Download the Linux executable (e.g., `WhipCast-...-Linux-x86_64`) from the **[Releases](../../releases)** tab.
+2. Grant it execution permissions: `chmod +x WhipCast-*-Linux-x86_64`.
+3. Configure or start the stream directly from the terminal:
 
 ```bash
-# Uruchomienie z konkretnym linkiem i rozmiarem okna
-./Discord_Stream_Overlay-1.x.x-Linux-x86_64 http://192.168.x.x:8889/stream 1280 720
+# Launch with a specific link and window size
+./WhipCast-1.0.0-Linux-x86_64 http://stream-link/stream 1280 720
 
-# Zapisanie samej konfiguracji (bez uruchamiania programu)
-./Discord_Stream_Overlay-1.x.x-Linux-x86_64 http://192.168.x.x:8889/stream --save-only
+# Save configuration only (without launching)
+./WhipCast-1.0.0-Linux-x86_64 http://stream-link/stream --save-only
 ```
-3. Przy kolejnych uruchomieniach wystarczy kliknąć plik dwukrotnie (lub uruchomić bez argumentów z terminala) – aplikacja zapamięta ostatnie ustawienia.
+4. For subsequent launches, simply double-click the file (or run it without arguments) – the application will remember your last settings.
 
-### 🛠️ Konfiguracja (Widz)
+## 🛠️ Configuration and Usage
 
-**Windows (GUI w trayu)**
-- **Stream URL** - Adres sieciowy strumienia (do oglądania).
-- **Offset X / Offset Y** - Precyzyjne przesunięcie obrazu od lewej/górnej krawędzi okna Discorda (podstawowo skonfigurowane pod monitory 1920x1080).
-- **Margin Right / Margin Bottom** - Marginesy ustalające wielkość wideo.
-- **Presets 1 / 2 / 3** - Przyciski do szybkiego przełączania się między zapisanymi profilami ustawień.
-- **Hotkey** - Skrót klawiszowy do błyskawicznego pokazywania/ukrywania overlayu (domyślnie `F7 + F8`).
-*(Po kliknięciu przycisku **Save**, overlay zrestartuje się automatycznie z nowymi parametrami).*
+### Windows (In-App Menu)
+- **Stream URL** - The network address of the stream.
+- **Attach to window** - Toggle attaching the overlay to the Discord window.
+- **Toggle Stream Key** - Keyboard shortcut to instantly show/hide the overlay (default `F9`).
+- **Toggle Mode Key** - Keyboard shortcut to switch between window sizes/modes (default `F8+F9`).
+- **Offset X / Offset Y** - Precise image offset from the left/top edge of the Discord window.
+- **Margin Right / Margin Bottom** - Margins that determine the video size.
+- **Presets 1 / 2 / 3** - Buttons for quickly switching between saved settings profiles.
 
-**⚠️ WAŻNE - Wymagania dla Linuksa**
-- Do poprawnego działania aplikacji na systemach Linux **wymagane jest zainstalowanie przynajmniej jednej przeglądarki opartej na silniku Chromium** (np. Google Chrome, Chromium, Brave, Microsoft Edge lub Vivaldi). 
-- Program wykorzystuje lekki tryb okienkowy (`--app`) tych przeglądarek, tworząc w pełni izolowany profil. Dzięki temu zainstalowane przez Ciebie na co dzień rozszerzenia (np. adblocki) nie ingerują w strumień wideo. Aplikacja posiada także wbudowaną niewidzialną "tarczę", która zabezpiecza wideo przed przypadkowym pauzowaniem po kliknięciu myszką, zostawiając aktywny jedynie dolny pasek sterowania streamem.
+*After clicking the **Save and restart stream** button, the overlay will automatically restart with the new parameters.*
 
-**Gdzie zapisywana jest konfiguracja?**
-- **Windows:** `%APPDATA%\Discord_Stream_Overlay\config.json`
-- **Linux:** `~/.config/discord_stream_overlay/config.json`
+### Linux (Technical Details and CLI)
+The Linux version features several advanced mechanisms under the hood:
+- **Requirements:** Any Chromium-based browser (Chrome, Chromium, Brave, Edge, Vivaldi) is required to run. If none is found, the program will fall back to opening the link in the system's default browser.
+- **Isolated profile:** The application creates its own browser profile. This ensures that your plugins (e.g., adblockers, cashback extensions) do not interfere with the stream or break the window.
+- **Click-Shield:** The generated player has an invisible protective layer on top. It blocks accidental clicks (and pausing) in the middle of the video, but leaves 52 pixels free at the bottom of the screen, allowing you to freely use the volume bar or fullscreen mode.
+
+**Available CLI parameters (Linux):**
+Syntax: `[URL] [Width][Height] [--save-only]`
+
+You can mix them freely, e.g.:
+- Change only the window size: `./app 1920 1080`
+- Change only the link and save: `./app http://new-link --save-only`
+
+### 📁 Where is the configuration saved?
+On both Windows and Linux, your settings are saved in the `config.json` file:
+- **Windows:** `%APPDATA%\whip-cast\config.json`
+- **Linux:** `~/.config/whip-cast/config.json`
 
 ---
 
-## 📡 Po stronie streamera (Nadawcy)
+## 📡 Streamer Requirements
 
-Aby widzowie mogli oglądać Twój strumień z ultra niskim opóźnieniem, musisz udostępnić im podgląd przez odpowiedni serwer. 
+In order for viewers to watch your stream with ultra-low latency, you need to provide them with a preview via an appropriate server.
 
-Działanie narzędzia zostało **oficjalnie potwierdzone z serwerem MediaMTX**. Narzędzie jest jednak uniwersalne i powinno działać z innymi rozwiązaniami, takimi jak:
-- ✅ **MediaMTX** (rekomendowane, wbudowana obsługa WebRTC/WHIP)
+The operation of the tool has been **officially confirmed with the MediaMTX server**. However, the tool is universal and should work with other solutions, such as:
+- ✅ **MediaMTX** (recommended, built-in WebRTC/WHIP support)
 - **OBS WebRTC**
-- **Nginx-RTMP** (z wyjściem HLS - większe opóźnienie)
+- **Nginx-RTMP** (with HLS output - higher latency)
 
-### Jak skonfigurować nadawanie w OBS Studio (WHIP)
+### How to configure streaming in OBS Studio (WHIP)
 
-Jeśli korzystasz z serwera np. MediaMTX, konfiguracja OBS Studio jest niezwykle prosta i nie wymaga żadnych dodatkowych wtyczek.
+If you are using a server like MediaMTX, configuring OBS Studio is incredibly simple and requires no additional plugins.
 
-1. Upewnij się, że Twój serwer (np. MediaMTX) jest uruchomiony i gotowy na przyjmowanie połączeń.
-2. Otwórz **OBS Studio** i wejdź w **Ustawienia (Settings)**.
-3. Przejdź do zakładki **Stream**.
-4. Z rozwijanej listy **Serwis (Service)** wybierz **WHIP**.
-5. W polu **Serwer** wklej adres nadawania (publish URL). Adres ten zazwyczaj musi zawierać parametr redukujący buforowanie na serwerze do minimum. Powinien wyglądać mniej więcej tak:
+1. Ensure your server (e.g., MediaMTX) is running and ready to accept connections.
+2. Open **OBS Studio** and go to **Settings**.
+3. Navigate to the **Stream** tab.
+4. From the **Service** dropdown list, select **WHIP**.
+5. In the **Server** field, paste the publishing URL. This address usually needs to contain a parameter to reduce server buffering to a minimum. It should look something like this:
    
    `http://192.168.x.x:8889/stream/whip?buffer=0`
-   *(Zmień adres IP na swój adres wirtualny z VPN, publiczny lub lokalny, w zależności od wybranej metody połączenia).*
+   *(Change the IP address to your virtual VPN address, public, or local address, depending on your chosen connection method).*
 
-6. Pole **Klucz strumienia (Bearer Token)** możesz zostawić puste.
-7. Kliknij **Zastosuj** i **Rozpocznij stream**.
+6. You can leave the **Bearer Token** field empty.
+7. Click **Apply** and **Start Streaming**.
 
-### Konfiguracja wyjścia (Output) w OBS
+### Output Configuration in OBS
 
-Aby wszystko działało płynnie i bez błędów w przeglądarkach widzów, nie należy nadmiernie kombinować z nietypowymi enkoderami. Wejdź w zakładkę **Wyjście (Output)** -> **Streaming** i upewnij się, że masz ustawione poniższe parametry:
-* **Enkoder wideo:** Zalecany jest **sprzętowy enkoder H.264** (np. NVIDIA NVENC H.264 lub AMD HW H.264). Można użyć kodowania na procesorze (x264), ale wiąże się to ze znacznym obciążeniem CPU i gorszą wydajnością.
-* **Enkoder dźwięku:** Wybierz **FFmpeg Opus**.
-* **Kontrola przepływności (Rate Control):** Ustaw na **CBR** (Constant Bitrate).
+For everything to run smoothly and without errors in the viewers' browsers, avoid overcomplicating things with unusual encoders. Go to the **Output** -> **Streaming** tab and ensure you have the following parameters set:
+* **Video Encoder:** A **hardware H.264 encoder** is recommended (e.g., NVIDIA NVENC H.264 or AMD HW H.264). You can use CPU encoding (x264), but it involves a significant CPU load and worse performance.
+* **Audio Encoder:** Select **FFmpeg Opus**.
+* **Rate Control:** Set to **CBR** (Constant Bitrate).
 
-Przykładowa konfiguracja potwierdzona działaniem:
+Example configuration confirmed to work:
 
-![Konfiguracja Output OBS](tutaj-wklej-link-do-swojego-screena.png)
+![OBS Output Configuration](insert-link-to-your-screenshot-here.png)
 
-### Link do oglądania (dla widza)
-Pamiętaj, że widzom wklejasz link **do oglądania** (WebRTC/WHEP), a nie ten do nadawania (WHIP). Jeśli wysyłasz w OBS stream na adres z końcówką `/whip`, widz wpisuje w aplikacji `Discord Stream Overlay` adres główny, np.:
+### Viewing Link (for the viewer)
+Remember that you must give your viewers the **viewing link** (WebRTC/WHEP), not the broadcasting link (WHIP). If you send the stream in OBS to an address ending with `/whip`, the viewer should enter the main address in the WhipCast app, e.g.:
 `http://192.168.x.x:8889/stream`

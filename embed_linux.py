@@ -8,7 +8,7 @@ import urllib.parse
 import argparse
 
 # ================= CONFIGURATION =================
-APP_NAME = "discord_stream_overlay"
+APP_NAME = "whip-cast_stream_overlay"
 CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".config", APP_NAME)
 CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
 
@@ -96,14 +96,14 @@ def create_local_html_player(stream_url, window_title):
 </body>
 </html>
 """
-    fd, path = tempfile.mkstemp(suffix=".html", prefix="discord_stream_linux_")
+    fd, path = tempfile.mkstemp(suffix=".html", prefix="whip-cast_stream_linux_")
     with os.fdopen(fd, 'w', encoding='utf-8') as f:
         f.write(html_content)
     # Return the URL format required to open the local file in a browser
     return f"file://{urllib.parse.quote(path)}"
 
 def main():
-    parser = argparse.ArgumentParser(description="Discord Stream Overlay (Linux App Mode)")
+    parser = argparse.ArgumentParser(description="whip-cast Stream Overlay (Linux App Mode)")
     
     # Register positional optional arguments. Their order matters; names/flags are not required.
     parser.add_argument('url', type=str, nargs='?', default=None, help='Stream URL, e.g. http://.../stream')
@@ -116,7 +116,7 @@ def main():
     # Capture all arguments
     args, unknown = parser.parse_known_args()
 
-    print("Starting Discord Stream Overlay (Linux App Mode)...")
+    print("Starting whip-cast Stream Overlay (Linux App Mode)...")
     cfg = load_config()
     
     config_changed = False

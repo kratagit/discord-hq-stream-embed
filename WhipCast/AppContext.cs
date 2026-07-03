@@ -2,18 +2,17 @@ using System;
 using System.Drawing;
 using System.Windows.Forms;
 
-namespace DiscordStreamOverlay
+namespace WhipCast
 {
     public class AppContext : ApplicationContext
     {
-        private SettingsForm settingsForm;
         private AppConfig config;
         private GlobalHotkey globalHotkey;
         private GlobalHotkey modeHotkey;
         private OverlayForm overlayForm;
         private System.Windows.Forms.Timer loopTimer;
 
-        private IntPtr discordHwnd = IntPtr.Zero;
+        private IntPtr targetHwnd = IntPtr.Zero;
         private bool isVisible = true;
         private bool restartRequested = false;
         
@@ -37,22 +36,7 @@ namespace DiscordStreamOverlay
             modeHotkey.SetHotkeyString(config.HOTKEY_TOGGLE_MODE);
             modeHotkey.HotkeyPressed += ModeHotkey_HotkeyPressed;
 
-            settingsForm = new SettingsForm(config);
-            settingsForm.SettingsSaved += (s, ev) =>
-            {
-                config = ConfigManager.Load();
-                globalHotkey.SetHotkeyString(config.HOTKEY_TOGGLE_STREAM);
-                modeHotkey.SetHotkeyString(config.HOTKEY_TOGGLE_MODE);
-                TriggerRestart(null, null);
-            };
-            settingsForm.FormClosed += (s, e) =>
-            {
-                globalHotkey.Dispose();
-                modeHotkey.Dispose();
-                if (overlayForm != null) overlayForm.Close();
-                ExitThread();
-            };
-            settingsForm.Show();
+        
 
             StartStreamCycle();
 
@@ -68,17 +52,18 @@ namespace DiscordStreamOverlay
         {
             if (overlayForm != null)
             {
+                overlayForm.IsRestarting = true;
                 overlayForm.Close();
                 overlayForm.Dispose();
                 overlayForm = null;
             }
 
-            if (!config.ATTACH_TO_DISCORD)
+            if (!config.ATTACH_TO_WINDOW)
             {
                 Icon standaloneIcon = null;
                 try
                 {
-                    using (var stream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("DiscordStreamOverlay.icon_s.ico"))
+                    using (var stream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("WhipCast.icon_s.ico"))
                     {
                         if (stream != null)
                         {
@@ -96,33 +81,62 @@ namespace DiscordStreamOverlay
                 }
                 catch { }
 
-                string windowTitle = $"Discord Stream Overlay - {config.STREAM_URL}";
-                overlayForm = new OverlayForm(config.STREAM_URL, true, windowTitle, standaloneIcon);
+                overlayForm = new OverlayForm(config, standaloneIcon);
                 overlayForm.FullscreenStateChanged += OverlayForm_FullscreenStateChanged;
+                overlayForm.RequestRestart += (s, e) => {
+                    config = ConfigManager.Load();
+                    globalHotkey.SetHotkeyString(config.HOTKEY_TOGGLE_STREAM);
+                    modeHotkey.SetHotkeyString(config.HOTKEY_TOGGLE_MODE);
+                    TriggerRestart(null, null);
+                };
+                overlayForm.RequestExit += (s, e) => {
+                    globalHotkey?.Dispose();
+                    modeHotkey?.Dispose();
+                    loopTimer?.Stop();
+                    if (overlayForm != null && !overlayForm.IsDisposed) {
+                        try { overlayForm.Close(); } catch { }
+                    }
+                    ExitThread();
+                };
                 overlayForm.Show();
                 return;
             }
 
-            discordHwnd = WindowManager.FindDiscordWindow();
-            if (discordHwnd == IntPtr.Zero)
+            targetHwnd = WindowManager.FindTargetWindow();
+            if (targetHwnd == IntPtr.Zero)
             {
                 return; // Will retry in the loop
             }
 
-            if (WindowManager.IsIconic(discordHwnd) || !WindowManager.IsWindowVisible(discordHwnd))
+            if (WindowManager.IsIconic(targetHwnd) || !WindowManager.IsWindowVisible(targetHwnd))
             {
-                // Discord is minimized or hidden. Do not create the form yet.
-                // We leave overlayForm as null. The loop will create it when Discord is restored.
+                // whip-cast is minimized or hidden. Do not create the form yet.
+                // We leave overlayForm as null. The loop will create it when whip-cast is restored.
                 return;
             }
 
             lastX = -1; lastY = -1; lastW = -1; lastH = -1;
 
-            overlayForm = new OverlayForm(config.STREAM_URL);
+            overlayForm = new OverlayForm(config);
             overlayForm.FullscreenStateChanged += OverlayForm_FullscreenStateChanged;
+            overlayForm.RequestRestart += (s, e) => {
+                config = ConfigManager.Load();
+                globalHotkey.SetHotkeyString(config.HOTKEY_TOGGLE_STREAM);
+                modeHotkey.SetHotkeyString(config.HOTKEY_TOGGLE_MODE);
+                TriggerRestart(null, null);
+            };
+            overlayForm.RequestExit += (s, e) => {
+                globalHotkey?.Dispose();
+                modeHotkey?.Dispose();
+                loopTimer?.Stop();
+                if (overlayForm != null && !overlayForm.IsDisposed) {
+                    try { overlayForm.Close(); } catch { }
+                }
+                ExitThread();
+            };
             
             // Set position immediately before showing to prevent visual glitches
-            WindowManager.GetWindowRect(discordHwnd, out WindowManager.RECT rect);
+            WindowManager.GetWindowRect(targetHwnd, out WindowManager.RECT rect);
             int d_x = rect.Left;
             int d_y = rect.Top;
             int d_w = rect.Right - rect.Left;
@@ -137,22 +151,57 @@ namespace DiscordStreamOverlay
             overlayForm.Location = new Point(d_x + config.OFFSET_X, d_y + config.OFFSET_Y);
             overlayForm.Size = new Size(new_width, new_height);
 
-            // Show with Discord as owner
-            overlayForm.Show(new WindowWrapper(discordHwnd));
+            // Show with whip-cast as owner
+            overlayForm.Show(new WindowWrapper(targetHwnd));
         }
+
+        private FormBorderStyle previousBorderStyle = FormBorderStyle.Sizable;
+        private FormWindowState previousWindowState = FormWindowState.Normal;
 
         private void OverlayForm_FullscreenStateChanged(object sender, EventArgs e)
         {
             if (overlayForm == null) return;
             IntPtr viewerHwnd = overlayForm.Handle;
 
+            if (!config.ATTACH_TO_WINDOW)
+            {
+                if (overlayForm.InvokeRequired)
+                {
+                    overlayForm.Invoke(new Action(() => OverlayForm_FullscreenStateChanged(sender, e)));
+                    return;
+                }
+
+                if (overlayForm.IsFullscreenMode)
+                {
+                    previousBorderStyle = overlayForm.FormBorderStyle;
+                    previousWindowState = overlayForm.WindowState;
+                    
+                    overlayForm.SuspendLayout();
+                    overlayForm.FormBorderStyle = FormBorderStyle.None;
+                    if (overlayForm.WindowState == FormWindowState.Maximized)
+                        overlayForm.WindowState = FormWindowState.Normal; // Force refresh
+                    overlayForm.WindowState = FormWindowState.Maximized;
+                    overlayForm.TopMost = true;
+                    overlayForm.ResumeLayout();
+                }
+                else
+                {
+                    overlayForm.SuspendLayout();
+                    overlayForm.FormBorderStyle = previousBorderStyle;
+                    overlayForm.WindowState = previousWindowState;
+                    overlayForm.TopMost = false;
+                    overlayForm.ResumeLayout();
+                }
+                return;
+            }
+
             if (overlayForm.IsFullscreenMode)
             {
-                // Detach from Discord
+                // Detach from whip-cast
                 WindowManager.SetWindowLongPtr(viewerHwnd, WindowManager.GWL_HWNDPARENT, IntPtr.Zero);
 
-                // Find nearest monitor to Discord
-                IntPtr monitor = WindowManager.MonitorFromWindow(discordHwnd, WindowManager.MONITOR_DEFAULTTONEAREST);
+                // Find nearest monitor to whip-cast
+                IntPtr monitor = WindowManager.MonitorFromWindow(targetHwnd, WindowManager.MONITOR_DEFAULTTONEAREST);
                 WindowManager.MONITORINFO monitorInfo = new WindowManager.MONITORINFO();
                 monitorInfo.cbSize = (uint)System.Runtime.InteropServices.Marshal.SizeOf(typeof(WindowManager.MONITORINFO));
                 
@@ -170,7 +219,7 @@ namespace DiscordStreamOverlay
             else
             {
                 // Reattach
-                WindowManager.SetWindowLongPtr(viewerHwnd, WindowManager.GWL_HWNDPARENT, discordHwnd);
+                WindowManager.SetWindowLongPtr(viewerHwnd, WindowManager.GWL_HWNDPARENT, targetHwnd);
                 WindowManager.SetWindowPos(viewerHwnd, WindowManager.HWND_NOTOPMOST, 0, 0, 0, 0, WindowManager.SWP_NOMOVE | WindowManager.SWP_NOSIZE);
             }
         }
@@ -184,16 +233,16 @@ namespace DiscordStreamOverlay
                 return;
             }
 
-            if (!config.ATTACH_TO_DISCORD)
+            if (!config.ATTACH_TO_WINDOW)
             {
-                return; // In standalone mode, do not track Discord
+                return; // In standalone mode, do not track whip-cast
             }
 
-            if (!WindowManager.IsWindow(discordHwnd))
+            if (!WindowManager.IsWindow(targetHwnd))
             {
-                // Discord closed, find again
-                discordHwnd = WindowManager.FindDiscordWindow();
-                if (discordHwnd == IntPtr.Zero && overlayForm != null)
+                // whip-cast closed, find again
+                targetHwnd = WindowManager.FindTargetWindow();
+                if (targetHwnd == IntPtr.Zero && overlayForm != null)
                 {
                     overlayForm.Close();
                     overlayForm = null;
@@ -201,10 +250,10 @@ namespace DiscordStreamOverlay
                 return;
             }
 
-            // If Discord is valid but overlay is missing, try to create it IF Discord is ready
+            // If whip-cast is valid but overlay is missing, try to create it IF whip-cast is ready
             if (overlayForm == null || overlayForm.IsDisposed)
             {
-                if (!WindowManager.IsIconic(discordHwnd) && WindowManager.IsWindowVisible(discordHwnd))
+                if (!WindowManager.IsIconic(targetHwnd) && WindowManager.IsWindowVisible(targetHwnd))
                 {
                     StartStreamCycle();
                 }
@@ -216,28 +265,28 @@ namespace DiscordStreamOverlay
 
             IntPtr viewerHwnd = overlayForm.Handle;
 
-            if (WindowManager.IsIconic(discordHwnd))
+            if (WindowManager.IsIconic(targetHwnd))
             {
-                // When Discord is minimized to taskbar, the OS automatically hides owned windows.
+                // When whip-cast is minimized to taskbar, the OS automatically hides owned windows.
                 // We do NOT explicitly call SW_HIDE because it breaks the OS restore logic.
             }
-            else if (!WindowManager.IsWindowVisible(discordHwnd))
+            else if (!WindowManager.IsWindowVisible(targetHwnd))
             {
-                // Discord is hidden to the system tray (not minimized). The OS doesn't hide the child.
+                // whip-cast is hidden to the system tray (not minimized). The OS doesn't hide the child.
                 // We must hide it manually.
                 if (WindowManager.IsWindowVisible(viewerHwnd))
                 {
                     WindowManager.ShowWindow(viewerHwnd, WindowManager.SW_HIDE);
                 }
                 
-                // Invalidate cache so when Discord comes back, it forces SWP_SHOWWINDOW
+                // Invalidate cache so when whip-cast comes back, it forces SWP_SHOWWINDOW
                 lastX = -1; lastY = -1; lastW = -1; lastH = -1;
             }
             else
             {
                 if (isVisible)
                 {
-                    WindowManager.GetWindowRect(discordHwnd, out WindowManager.RECT rect);
+                    WindowManager.GetWindowRect(targetHwnd, out WindowManager.RECT rect);
                     int d_x = rect.Left;
                     int d_y = rect.Top;
                     int d_w = rect.Right - rect.Left;
@@ -280,7 +329,7 @@ namespace DiscordStreamOverlay
                 if (isVisible) WindowManager.ShowWindow(overlayForm.Handle, WindowManager.SW_SHOWNA);
                 else WindowManager.ShowWindow(overlayForm.Handle, WindowManager.SW_HIDE);
             }
-            else if (!config.ATTACH_TO_DISCORD && isVisible)
+            else if (!config.ATTACH_TO_WINDOW && isVisible)
             {
                 StartStreamCycle();
             }
@@ -288,13 +337,10 @@ namespace DiscordStreamOverlay
 
         private void ModeHotkey_HotkeyPressed(object sender, EventArgs e)
         {
-            config.ATTACH_TO_DISCORD = !config.ATTACH_TO_DISCORD;
+            config.ATTACH_TO_WINDOW = !config.ATTACH_TO_WINDOW;
             ConfigManager.Save(config);
 
-            if (settingsForm != null && !settingsForm.IsDisposed)
-            {
-                settingsForm.UpdateAttachToggle(config.ATTACH_TO_DISCORD);
-            }
+            
 
             // Immediately restart the stream with new mode
             TriggerRestart(null, null);
