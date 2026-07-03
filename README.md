@@ -49,8 +49,6 @@ The Linux version runs as a standalone, minimalist web application using the Chr
 ```
 4. For subsequent launches, simply double-click the file (or run it without arguments) – the application will remember your last settings.
 
----
-
 ## 🛠️ Configuration and Usage
 
 ### Windows (In-App Menu)
