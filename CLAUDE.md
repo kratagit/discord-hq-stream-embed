@@ -92,6 +92,12 @@ implementation and are unused by `embed_linux.py`.
   `"Discord"` or ends with `" - Discord"`, and requires width > 200 px to skip Discord's
   transient mini-windows.
 
+**The repositioning tick is dirty-checked** against `lastX/lastY/lastW/lastH`: it calls
+`SetWindowPos` only when Discord's rect actually differs from the cached one. So any
+code that moves or resizes the overlay behind the timer's back — fullscreen being the
+obvious case — **must reset that cache to `-1`**, or the timer will see an unchanged
+Discord rect, skip the update, and leave the window wherever it was put.
+
 **Standalone is the default for fresh installs** — `AppConfig.ATTACH_TO_WINDOW` defaults
 to `false`, so a user with no `config.json` yet gets a normal window rather than an
 overlay glued to Discord. This is only a default: once a config file exists, the saved
