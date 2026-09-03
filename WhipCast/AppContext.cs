@@ -15,7 +15,7 @@ namespace WhipCast
         private IntPtr targetHwnd = IntPtr.Zero;
         private bool isVisible = true;
         private bool restartRequested = false;
-        
+
         private int lastX = -1, lastY = -1, lastW = -1, lastH = -1;
 
         private class WindowWrapper : IWin32Window
@@ -35,8 +35,6 @@ namespace WhipCast
             modeHotkey = new GlobalHotkey();
             modeHotkey.SetHotkeyString(config.HOTKEY_TOGGLE_MODE);
             modeHotkey.HotkeyPressed += ModeHotkey_HotkeyPressed;
-
-        
 
             StartStreamCycle();
 
@@ -65,39 +63,13 @@ namespace WhipCast
                 {
                     using (var stream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("WhipCast.icon_s.ico"))
                     {
-                        if (stream != null)
-                        {
-                            standaloneIcon = new Icon(stream);
-                        }
-                        else
-                        {
-                            // Fallback to disk if embedded resource fails for some reason
-                            string exeDir = System.IO.Path.GetDirectoryName(System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName ?? Application.StartupPath) ?? Application.StartupPath;
-                            string iconPath = System.IO.Path.Combine(exeDir, "assets", "icon_s.ico");
-                            if (System.IO.File.Exists(iconPath))
-                                standaloneIcon = new Icon(iconPath);
-                        }
+                        if (stream != null) standaloneIcon = new Icon(stream);
                     }
                 }
                 catch { }
 
                 overlayForm = new OverlayForm(config, standaloneIcon);
-                overlayForm.FullscreenStateChanged += OverlayForm_FullscreenStateChanged;
-                overlayForm.RequestRestart += (s, e) => {
-                    config = ConfigManager.Load();
-                    globalHotkey.SetHotkeyString(config.HOTKEY_TOGGLE_STREAM);
-                    modeHotkey.SetHotkeyString(config.HOTKEY_TOGGLE_MODE);
-                    TriggerRestart(null, null);
-                };
-                overlayForm.RequestExit += (s, e) => {
-                    globalHotkey?.Dispose();
-                    modeHotkey?.Dispose();
-                    loopTimer?.Stop();
-                    if (overlayForm != null && !overlayForm.IsDisposed) {
-                        try { overlayForm.Close(); } catch { }
-                    }
-                    ExitThread();
-                };
+                WireOverlayForm();
                 overlayForm.Show();
                 return;
             }
@@ -118,23 +90,8 @@ namespace WhipCast
             lastX = -1; lastY = -1; lastW = -1; lastH = -1;
 
             overlayForm = new OverlayForm(config);
-            overlayForm.FullscreenStateChanged += OverlayForm_FullscreenStateChanged;
-            overlayForm.RequestRestart += (s, e) => {
-                config = ConfigManager.Load();
-                globalHotkey.SetHotkeyString(config.HOTKEY_TOGGLE_STREAM);
-                modeHotkey.SetHotkeyString(config.HOTKEY_TOGGLE_MODE);
-                TriggerRestart(null, null);
-            };
-            overlayForm.RequestExit += (s, e) => {
-                globalHotkey?.Dispose();
-                modeHotkey?.Dispose();
-                loopTimer?.Stop();
-                if (overlayForm != null && !overlayForm.IsDisposed) {
-                    try { overlayForm.Close(); } catch { }
-                }
-                ExitThread();
-            };
-            
+            WireOverlayForm();
+
             // Set position immediately before showing to prevent visual glitches
             WindowManager.GetWindowRect(targetHwnd, out WindowManager.RECT rect);
             int d_x = rect.Left;
@@ -153,6 +110,27 @@ namespace WhipCast
 
             // Show with whip-cast as owner
             overlayForm.Show(new WindowWrapper(targetHwnd));
+        }
+
+        // Both run modes attach the same handlers; only form construction differs.
+        private void WireOverlayForm()
+        {
+            overlayForm.FullscreenStateChanged += OverlayForm_FullscreenStateChanged;
+            overlayForm.RequestRestart += (s, e) => {
+                config = ConfigManager.Load();
+                globalHotkey.SetHotkeyString(config.HOTKEY_TOGGLE_STREAM);
+                modeHotkey.SetHotkeyString(config.HOTKEY_TOGGLE_MODE);
+                TriggerRestart(null, null);
+            };
+            overlayForm.RequestExit += (s, e) => {
+                globalHotkey?.Dispose();
+                modeHotkey?.Dispose();
+                loopTimer?.Stop();
+                if (overlayForm != null && !overlayForm.IsDisposed) {
+                    try { overlayForm.Close(); } catch { }
+                }
+                ExitThread();
+            };
         }
 
         private FormBorderStyle previousBorderStyle = FormBorderStyle.Sizable;
@@ -175,7 +153,7 @@ namespace WhipCast
                 {
                     previousBorderStyle = overlayForm.FormBorderStyle;
                     previousWindowState = overlayForm.WindowState;
-                    
+
                     overlayForm.SuspendLayout();
                     overlayForm.FormBorderStyle = FormBorderStyle.None;
                     if (overlayForm.WindowState == FormWindowState.Maximized)
@@ -204,7 +182,7 @@ namespace WhipCast
                 IntPtr monitor = WindowManager.MonitorFromWindow(targetHwnd, WindowManager.MONITOR_DEFAULTTONEAREST);
                 WindowManager.MONITORINFO monitorInfo = new WindowManager.MONITORINFO();
                 monitorInfo.cbSize = (uint)System.Runtime.InteropServices.Marshal.SizeOf(typeof(WindowManager.MONITORINFO));
-                
+
                 int mx = 0, my = 0, mw = Screen.PrimaryScreen.Bounds.Width, mh = Screen.PrimaryScreen.Bounds.Height;
                 if (WindowManager.GetMonitorInfo(monitor, ref monitorInfo))
                 {
@@ -267,7 +245,6 @@ namespace WhipCast
                 return; // Wait until created
             }
 
-            if (overlayForm == null || overlayForm.IsDisposed) return;
             if (overlayForm.IsFullscreenMode) return; // Skip resizing if fullscreen
 
             IntPtr viewerHwnd = overlayForm.Handle;
@@ -285,7 +262,7 @@ namespace WhipCast
                 {
                     WindowManager.ShowWindow(viewerHwnd, WindowManager.SW_HIDE);
                 }
-                
+
                 // Invalidate cache so when whip-cast comes back, it forces SWP_SHOWWINDOW
                 lastX = -1; lastY = -1; lastW = -1; lastH = -1;
             }
@@ -346,8 +323,6 @@ namespace WhipCast
         {
             config.ATTACH_TO_WINDOW = !config.ATTACH_TO_WINDOW;
             ConfigManager.Save(config);
-
-            
 
             // Immediately restart the stream with new mode
             TriggerRestart(null, null);
