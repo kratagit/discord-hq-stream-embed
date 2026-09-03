@@ -16,7 +16,7 @@ namespace WhipCast
 
     public class AppConfig
     {
-        public bool ATTACH_TO_WINDOW { get; set; } = true;
+        public bool ATTACH_TO_WINDOW { get; set; } = false;
         public string STREAM_URL { get; set; } = "http://192.168.8.122:8889/stream";
         public string HOTKEY_TOGGLE_STREAM { get; set; } = "f7+f8";
         public string HOTKEY_TOGGLE_MODE { get; set; } = "f8+f9";
