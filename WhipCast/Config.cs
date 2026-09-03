@@ -36,8 +36,14 @@ namespace WhipCast
     public static class ConfigManager
     {
         private static readonly string AppName = "whip-cast";
-        private static string ConfigDir => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), AppName);
-        private static string ConfigFile => Path.Combine(ConfigDir, "config.json");
+        public static string ConfigDir => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), AppName);
+        public static string ConfigFile => Path.Combine(ConfigDir, "config.json");
+
+        /// <summary>Serializes a config the same way <see cref="Save"/> writes it to disk.</summary>
+        public static string Serialize(AppConfig config)
+        {
+            return JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
+        }
 
         public static AppConfig Load()
         {
