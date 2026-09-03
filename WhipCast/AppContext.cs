@@ -221,6 +221,13 @@ namespace WhipCast
                 // Reattach
                 WindowManager.SetWindowLongPtr(viewerHwnd, WindowManager.GWL_HWNDPARENT, targetHwnd);
                 WindowManager.SetWindowPos(viewerHwnd, WindowManager.HWND_NOTOPMOST, 0, 0, 0, 0, WindowManager.SWP_NOMOVE | WindowManager.SWP_NOSIZE);
+
+                // Leaving fullscreen only restores the owner and z-order; size and
+                // position are the timer's job. But the timer repositions solely when
+                // Discord's rect changes, and Discord did not move while we were
+                // fullscreen, so its dirty-check would skip us and the window would stay
+                // stretched across the monitor. Invalidate the cache to force one update.
+                lastX = -1; lastY = -1; lastW = -1; lastH = -1;
             }
         }
 
