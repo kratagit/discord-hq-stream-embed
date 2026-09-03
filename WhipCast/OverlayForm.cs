@@ -32,11 +32,11 @@ namespace WhipCast
         private bool isExiting = false;
         public bool IsRestarting = false;
 
-        public event EventHandler FullscreenStateChanged;
-        public event EventHandler RequestRestart;
-        public event EventHandler RequestExit;
+        public event EventHandler? FullscreenStateChanged;
+        public event EventHandler? RequestRestart;
+        public event EventHandler? RequestExit;
 
-        public OverlayForm(AppConfig config, Icon appIcon = null)
+        public OverlayForm(AppConfig config, Icon? appIcon = null)
         {
             this.currentConfig = config;
 
@@ -129,7 +129,8 @@ namespace WhipCast
 
                         string htmlContent;
             var assembly = System.Reflection.Assembly.GetExecutingAssembly();
-            using (var stream = assembly.GetManifestResourceStream("WhipCast.menu.html"))
+            using (var stream = assembly.GetManifestResourceStream("WhipCast.menu.html")
+                ?? throw new InvalidOperationException("Embedded resource WhipCast.menu.html is missing"))
             using (var reader = new System.IO.StreamReader(stream))
             {
                 htmlContent = reader.ReadToEnd();
@@ -195,7 +196,7 @@ namespace WhipCast
             }
         }
 
-        private void CoreWebView2_WebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs e)
+        private void CoreWebView2_WebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
         {
             try
             {
@@ -224,7 +225,7 @@ namespace WhipCast
                 {
                     if (doc.RootElement.TryGetProperty("type", out JsonElement typeEl))
                     {
-                        string type = typeEl.GetString();
+                        string? type = typeEl.GetString();
                         switch (type)
                         {
                             case "REQUEST_CONFIG":
@@ -293,14 +294,16 @@ namespace WhipCast
 
         private void ParseConfigElement(JsonElement el)
         {
-            if (el.TryGetProperty("STREAM_URL", out JsonElement streamUrl))
-                currentConfig.STREAM_URL = streamUrl.GetString();
+            // Each string field is only assigned when the JSON actually carries text, so
+            // a null in the document leaves the existing value alone rather than nulling it.
+            if (el.TryGetProperty("STREAM_URL", out JsonElement streamUrl) && streamUrl.GetString() is string url)
+                currentConfig.STREAM_URL = url;
             if (el.TryGetProperty("ATTACH_TO_WINDOW", out JsonElement attach))
                 currentConfig.ATTACH_TO_WINDOW = attach.GetBoolean();
-            if (el.TryGetProperty("HOTKEY_TOGGLE_STREAM", out JsonElement h1))
-                currentConfig.HOTKEY_TOGGLE_STREAM = h1.GetString();
-            if (el.TryGetProperty("HOTKEY_TOGGLE_MODE", out JsonElement h2))
-                currentConfig.HOTKEY_TOGGLE_MODE = h2.GetString();
+            if (el.TryGetProperty("HOTKEY_TOGGLE_STREAM", out JsonElement h1) && h1.GetString() is string hk1)
+                currentConfig.HOTKEY_TOGGLE_STREAM = hk1;
+            if (el.TryGetProperty("HOTKEY_TOGGLE_MODE", out JsonElement h2) && h2.GetString() is string hk2)
+                currentConfig.HOTKEY_TOGGLE_MODE = hk2;
             if (el.TryGetProperty("OFFSET_X", out JsonElement ox))
                 currentConfig.OFFSET_X = ox.GetInt32();
             if (el.TryGetProperty("OFFSET_Y", out JsonElement oy))

@@ -28,11 +28,17 @@ that matters. If a long-lived shell reports `dotnet` as unknown, it inherited a 
 environment block from before the SDK install — open a new shell, or fall back to
 `& "$env:ProgramFiles\dotnet\dotnet.exe" …`.
 
-A clean `Release` build currently emits **0 errors and 28 warnings**. Those warnings
-are pre-existing baseline noise — nullability (`CS8618`/`CS8622`/`CS8625`/`CS860x`,
-the codebase enables `<Nullable>enable</Nullable>` but was not written for it) plus
-`MSB3277` about a `WindowsBase` version unification pulled in by the WebView2 package's
-unused WPF assembly. Judge a change by whether it *adds* warnings, not by the total.
+A clean `Release` build emits **0 errors and 1 warning**, and that one warning is
+`MSB3277` about a `WindowsBase` version conflict, coming from the WPF assembly the
+WebView2 package ships and this WinForms app never loads. It is not suppressed,
+because it is a real MSBuild diagnostic rather than something the code can fix.
+
+**The compiler warning count is 0 — keep it there.** `<Nullable>enable</Nullable>` is
+on and the code is now annotated for it, so any `CS86xx` that appears is a genuine new
+nullability hole, not inherited noise. In particular: event handlers take `object?
+sender` to match the delegate, events are declared `EventHandler?`, `overlayForm` is
+`OverlayForm?`, and `ParseConfigElement` assigns a string field only when the JSON
+actually carries text.
 
 Releases are produced by [`.github/workflows/build.yml`](.github/workflows/build.yml)
 (manual `workflow_dispatch`, takes a `vX.Y.Z` version input, builds both targets and
