@@ -133,6 +133,9 @@
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         color: var(--text-main);
         overflow-y: auto;
+        /* overflow-y alone promotes overflow-x from visible to auto, which showed a
+           horizontal scrollbar for a 1px overhang that scrolled nothing. */
+        overflow-x: hidden;
         pointer-events: auto;
     }
     #sidebar.open {
@@ -144,7 +147,7 @@
         position: absolute;
         top: 9px;
         left: 55px;
-        width: 265px;
+        right: 0;
         text-align: center;
         font-size: 37px;
         font-weight: 800;
