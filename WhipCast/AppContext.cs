@@ -61,7 +61,7 @@ namespace WhipCast
                 Icon standaloneIcon = null;
                 try
                 {
-                    using (var stream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("WhipCast.icon_s.ico"))
+                    using (var stream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("WhipCast.icon.ico"))
                     {
                         if (stream != null) standaloneIcon = new Icon(stream);
                     }

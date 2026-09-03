@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="..\assets\icon_s.ico" LogicalName="WhipCast.icon_s.ico" />
+    <EmbeddedResource Include="..\assets\icon.ico" LogicalName="WhipCast.icon.ico" />
     <EmbeddedResource Include="menu.html" LogicalName="WhipCast.menu.html" />
   </ItemGroup>
 
