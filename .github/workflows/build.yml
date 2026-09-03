@@ -42,7 +42,7 @@ jobs:
           Move-Item "bin\Release\net9.0-windows\win-x64\publish\WhipCast.exe" "..\WhipCast-${{ steps.get_version.outputs.VERSION }}-Windows-x64.exe"
 
       - name: Create Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.event.inputs.version }}
           name: Release ${{ github.event.inputs.version }}
@@ -103,7 +103,7 @@ jobs:
           stat --printf='%n %s bytes\n' "dist/WhipCast-${{ steps.get_version.outputs.VERSION }}-Linux-x86_64"
 
       - name: Upload Linux Binary to Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.event.inputs.version }}
           files: |
