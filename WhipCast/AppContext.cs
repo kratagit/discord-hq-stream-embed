@@ -63,7 +63,7 @@ namespace WhipCast
                 Icon standaloneIcon = null;
                 try
                 {
-                    using (var stream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("WhipCast.icon_s.ico"))
+                    using (var stream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("WhipCast.icon.ico"))
                     {
                         if (stream != null)
                         {
@@ -73,7 +73,7 @@ namespace WhipCast
                         {
                             // Fallback to disk if embedded resource fails for some reason
                             string exeDir = System.IO.Path.GetDirectoryName(System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName ?? Application.StartupPath) ?? Application.StartupPath;
-                            string iconPath = System.IO.Path.Combine(exeDir, "assets", "icon_s.ico");
+                            string iconPath = System.IO.Path.Combine(exeDir, "assets", "icon.ico");
                             if (System.IO.File.Exists(iconPath))
                                 standaloneIcon = new Icon(iconPath);
                         }
