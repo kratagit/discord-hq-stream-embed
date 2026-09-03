@@ -20,7 +20,6 @@ namespace WhipCast
         public string STREAM_URL { get; set; } = "http://192.168.8.122:8889/stream";
         public string HOTKEY_TOGGLE_STREAM { get; set; } = "f7+f8";
         public string HOTKEY_TOGGLE_MODE { get; set; } = "f8+f9";
-        public string WINDOW_TITLE { get; set; } = "MY_STREAM";
         public int OFFSET_X { get; set; } = 325;
         public int OFFSET_Y { get; set; } = 38;
         public int MARGIN_RIGHT { get; set; } = 8;
@@ -36,8 +35,14 @@ namespace WhipCast
     public static class ConfigManager
     {
         private static readonly string AppName = "whip-cast";
-        private static string ConfigDir => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), AppName);
-        private static string ConfigFile => Path.Combine(ConfigDir, "config.json");
+        public static string ConfigDir => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), AppName);
+        public static string ConfigFile => Path.Combine(ConfigDir, "config.json");
+
+        /// <summary>Serializes a config the same way <see cref="Save"/> writes it to disk.</summary>
+        public static string Serialize(AppConfig config)
+        {
+            return JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
+        }
 
         public static AppConfig Load()
         {

@@ -72,7 +72,6 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pyinstaller
           pip install -r requirements.txt
 
       - name: Print Build Environment
@@ -91,18 +90,8 @@ jobs:
       - name: Build with PyInstaller
         run: |
           pyinstaller --noconfirm --onefile --windowed \
-            --add-data "assets/icon.png:assets" \
             --name "WhipCast-${{ steps.get_version.outputs.VERSION }}-Linux-x86_64" \
             --exclude-module "tkinter" \
-            --exclude-module "pystray" \
-            --exclude-module "PIL" \
-            --exclude-module "win32gui" \
-            --exclude-module "pywebview" \
-            --exclude-module "win32con" \
-            --exclude-module "win32api" \
-            --exclude-module "webview" \
-            --exclude-module "numpy" \
-            --exclude-module "pandas" \
             --exclude-module "unittest" \
             --exclude-module "pydoc" \
             --exclude-module "xml" \

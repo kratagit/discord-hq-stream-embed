@@ -32,13 +32,6 @@ namespace WhipCast
             public int Bottom;
         }
 
-        [DllImport("user32.dll")]
-        public static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
-        [DllImport("user32.dll")]
-        public static extern int GetWindowLong(IntPtr hWnd, int nIndex);
-        [DllImport("user32.dll")]
-        public static extern IntPtr SetParent(IntPtr hWndChild, IntPtr hWndNewParent);
-
         [DllImport("user32.dll", SetLastError = true)]
         public static extern IntPtr SetWindowLongPtr(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
 
@@ -103,10 +96,8 @@ namespace WhipCast
             }
             return maxFrequency;
         }
-        public const int GWL_EXSTYLE = -20;
         public const int WS_EX_TOOLWINDOW = 0x00000080;
         public const int WS_EX_APPWINDOW = 0x00040000;
-        public const int WS_EX_TOPMOST = 0x00000008;
 
         [DllImport("user32.dll")]
         public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
@@ -120,12 +111,10 @@ namespace WhipCast
         public const uint SWP_NOACTIVATE = 0x0010;
         public const uint SWP_NOOWNERZORDER = 0x0200;
         public const uint SWP_SHOWWINDOW = 0x0040;
-        public const uint SWP_HIDEWINDOW = 0x0080;
 
         [DllImport("user32.dll")]
         public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
         public const int SW_HIDE = 0;
-        public const int SW_SHOW = 5;
         public const int SW_SHOWNA = 8;
 
         [DllImport("user32.dll")]
@@ -168,7 +157,7 @@ namespace WhipCast
                         if (title.EndsWith(" - Discord") || title == "Discord")
                         {
                             GetWindowRect(hWnd, out RECT rect);
-                            if ((rect.Right - rect.Left) > 200) // Zabezpieczenie przed dziwnymi mini-okienkami
+                            if ((rect.Right - rect.Left) > 200) // Guard against Discord's transient mini-windows
                             {
                                 found = hWnd;
                                 return false; // stop searching

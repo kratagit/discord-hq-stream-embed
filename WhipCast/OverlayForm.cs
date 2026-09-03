@@ -145,6 +145,56 @@ namespace WhipCast
             webView.CoreWebView2.PostWebMessageAsJson(json);
         }
 
+        private void SendStatusToWeb(string text, bool isError = false)
+        {
+            try
+            {
+                // Deliberately not "STATUS": the page already uses that name for the
+                // stream state the iframe reports up via window.postMessage.
+                string json = JsonSerializer.Serialize(new { type = "STATUS_MSG", text, isError });
+                webView.CoreWebView2.PostWebMessageAsJson(json);
+            }
+            catch { }
+        }
+
+        // Clipboard work stays in C#: the page is loaded via NavigateToString, so it is
+        // not a secure context and navigator.clipboard is unavailable to it.
+        private void CopyConfigToClipboard()
+        {
+            try
+            {
+                Clipboard.SetText(ConfigManager.Serialize(currentConfig));
+                SendStatusToWeb("Config copied to clipboard");
+            }
+            catch (Exception ex)
+            {
+                SendStatusToWeb("Copy failed: " + ex.Message, true);
+            }
+        }
+
+        private void RevealConfigInExplorer()
+        {
+            try
+            {
+                string file = ConfigManager.ConfigFile;
+                if (System.IO.File.Exists(file))
+                {
+                    // /select, needs the path quoted and no space after the comma.
+                    System.Diagnostics.Process.Start("explorer.exe", "/select,\"" + file + "\"");
+                }
+                else
+                {
+                    // Nothing saved yet - open the folder so the user can still find it.
+                    System.IO.Directory.CreateDirectory(ConfigManager.ConfigDir);
+                    System.Diagnostics.Process.Start("explorer.exe", "\"" + ConfigManager.ConfigDir + "\"");
+                }
+            }
+            catch (Exception ex)
+            {
+                SendStatusToWeb("Could not open Explorer: " + ex.Message, true);
+            }
+        }
+
         private void CoreWebView2_WebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs e)
         {
             try
@@ -220,6 +270,12 @@ namespace WhipCast
                                         RequestRestart?.Invoke(this, EventArgs.Empty);
                                     }
                                 }
+                                break;
+                            case "COPY_CONFIG":
+                                CopyConfigToClipboard();
+                                break;
+                            case "OPEN_CONFIG_FOLDER":
+                                RevealConfigInExplorer();
                                 break;
                             case "EXIT_APP":
                                 if (!isExiting)

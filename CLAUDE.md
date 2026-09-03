@@ -28,7 +28,7 @@ that matters. If a long-lived shell reports `dotnet` as unknown, it inherited a 
 environment block from before the SDK install — open a new shell, or fall back to
 `& "$env:ProgramFiles\dotnet\dotnet.exe" …`.
 
-A clean `Release` build currently emits **0 errors and 32 warnings**. Those warnings
+A clean `Release` build currently emits **0 errors and 28 warnings**. Those warnings
 are pre-existing baseline noise — nullability (`CS8618`/`CS8622`/`CS8625`/`CS860x`,
 the codebase enables `<Nullable>enable</Nullable>` but was not written for it) plus
 `MSB3277` about a `WindowsBase` version unification pulled in by the WebView2 package's
@@ -58,9 +58,8 @@ Linux:
 python embed_linux.py http://192.168.x.x:8889/stream 1280 720
 ```
 
-`requirements.txt` covers both the Linux runtime and the PyInstaller build; most
-entries are `sys_platform == 'win32'`-gated leftovers from an earlier pywebview
-implementation and are unused by `embed_linux.py`.
+`embed_linux.py` imports nothing outside the standard library, so `requirements.txt`
+carries only PyInstaller, needed to produce the Linux binary in CI.
 
 ## Windows architecture
 
@@ -76,8 +75,9 @@ implementation and are unused by `embed_linux.py`.
   all exceptions and fall back to defaults.
 - **`GlobalHotkey.cs`** — low-level keyboard hook (`WH_KEYBOARD_LL`). Two separate
   instances are created: one for stream visibility, one for mode toggle.
-- **`ToggleSwitch.cs`** — a custom-painted WinForms control that is **currently unused**
-  (the settings UI moved to HTML).
+
+That is the whole Windows codebase — five files. There is no WinForms-drawn settings
+UI; all of it lives in `menu.html`.
 
 ### The two run modes
 
@@ -145,8 +145,20 @@ Messages **HTML → C#** (`window.chrome.webview.postMessage`), handled in
 | `{type:'SAVE_AND_RESTART', config}` | parse → save → restart |
 | `{type:'SAVE_PRESET', presetId, config}` | write one of presets `"1"`/`"2"`/`"3"` |
 | `{type:'LOAD_PRESET', presetId}` | apply preset → save → restart |
+| `{type:'COPY_CONFIG'}` | put the serialized config on the clipboard |
+| `{type:'OPEN_CONFIG_FOLDER'}` | select `config.json` in Explorer |
 | `{type:'EXIT_APP'}` | quit |
 | `'FS_ON'` / `'FS_OFF'` (raw strings, not JSON) | fullscreen enter/leave |
+
+C# → HTML replies are `{type:'LOAD_CONFIG', config}` and `{type:'STATUS_MSG', text,
+isError}`, both delivered on the `window.chrome.webview` message listener. Note the
+page *also* listens on plain `window` for `{type:'STATUS'}` — that one is the stream
+state coming up from the iframe and is unrelated, which is why the C# toast is called
+`STATUS_MSG`.
+
+**Clipboard and Explorer access live in C#, not in the page.** `menu.html` is handed to
+`NavigateToString`, so it is not a secure context: `navigator.clipboard` is unavailable
+and there is no file system access.
 
 Fullscreen is handled differently per mode: standalone borderless-maximizes the form;
 attached mode detaches the owner (`SetWindowLongPtr(GWL_HWNDPARENT, 0)`) and topmosts
@@ -181,9 +193,6 @@ player.
 
 ## Gotchas
 
-- **`WhipCast/extract_html.py` is a spent one-shot migration script.** It carved
-  `menu.html` out of a former inline string in `OverlayForm.cs` and rewrote that file.
-  The patterns it greps for no longer exist. Do not run it.
 - Default `STREAM_URL` is a hard-coded LAN address (`http://192.168.8.122:8889/stream`)
   in both `Config.cs` and `embed_linux.py`.
 - Config defaults for `OFFSET_*` / `MARGIN_*` are tuned for Discord's chrome and are
