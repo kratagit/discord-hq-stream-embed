@@ -19,10 +19,10 @@ jobs:
     
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '9.0.x'
           
@@ -42,7 +42,7 @@ jobs:
           Move-Item "bin\Release\net9.0-windows\win-x64\publish\WhipCast.exe" "..\WhipCast-${{ steps.get_version.outputs.VERSION }}-Windows-x64.exe"
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.version }}
           name: Release ${{ github.event.inputs.version }}
@@ -59,14 +59,13 @@ jobs:
     runs-on: ubuntu-22.04
     env:
       PYTHONUTF8: 1
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.13'
           
@@ -115,7 +114,7 @@ jobs:
           stat --printf='%n %s bytes\n' "dist/WhipCast-${{ steps.get_version.outputs.VERSION }}-Linux-x86_64"
 
       - name: Upload Linux Binary to Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.version }}
           files: |
