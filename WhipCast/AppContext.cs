@@ -9,7 +9,7 @@ namespace WhipCast
         private AppConfig config;
         private GlobalHotkey globalHotkey;
         private GlobalHotkey modeHotkey;
-        private OverlayForm overlayForm;
+        private OverlayForm? overlayForm;
         private System.Windows.Forms.Timer loopTimer;
 
         private IntPtr targetHwnd = IntPtr.Zero;
@@ -58,7 +58,7 @@ namespace WhipCast
 
             if (!config.ATTACH_TO_WINDOW)
             {
-                Icon standaloneIcon = null;
+                Icon? standaloneIcon = null;
                 try
                 {
                     using (var stream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("WhipCast.icon.ico"))
@@ -69,7 +69,7 @@ namespace WhipCast
                 catch { }
 
                 overlayForm = new OverlayForm(config, standaloneIcon);
-                WireOverlayForm();
+                WireOverlayForm(overlayForm);
                 overlayForm.Show();
                 return;
             }
@@ -90,7 +90,7 @@ namespace WhipCast
             lastX = -1; lastY = -1; lastW = -1; lastH = -1;
 
             overlayForm = new OverlayForm(config);
-            WireOverlayForm();
+            WireOverlayForm(overlayForm);
 
             // Set position immediately before showing to prevent visual glitches
             WindowManager.GetWindowRect(targetHwnd, out WindowManager.RECT rect);
@@ -113,16 +113,18 @@ namespace WhipCast
         }
 
         // Both run modes attach the same handlers; only form construction differs.
-        private void WireOverlayForm()
+        // Takes the form as an argument rather than reading the field, so the caller's
+        // freshly built instance is what gets wired and no null check is needed here.
+        private void WireOverlayForm(OverlayForm form)
         {
-            overlayForm.FullscreenStateChanged += OverlayForm_FullscreenStateChanged;
-            overlayForm.RequestRestart += (s, e) => {
+            form.FullscreenStateChanged += OverlayForm_FullscreenStateChanged;
+            form.RequestRestart += (s, e) => {
                 config = ConfigManager.Load();
                 globalHotkey.SetHotkeyString(config.HOTKEY_TOGGLE_STREAM);
                 modeHotkey.SetHotkeyString(config.HOTKEY_TOGGLE_MODE);
                 TriggerRestart(null, null);
             };
-            overlayForm.RequestExit += (s, e) => {
+            form.RequestExit += (s, e) => {
                 globalHotkey?.Dispose();
                 modeHotkey?.Dispose();
                 loopTimer?.Stop();
@@ -136,7 +138,7 @@ namespace WhipCast
         private FormBorderStyle previousBorderStyle = FormBorderStyle.Sizable;
         private FormWindowState previousWindowState = FormWindowState.Normal;
 
-        private void OverlayForm_FullscreenStateChanged(object sender, EventArgs e)
+        private void OverlayForm_FullscreenStateChanged(object? sender, EventArgs e)
         {
             if (overlayForm == null) return;
             IntPtr viewerHwnd = overlayForm.Handle;
@@ -183,7 +185,7 @@ namespace WhipCast
                 WindowManager.MONITORINFO monitorInfo = new WindowManager.MONITORINFO();
                 monitorInfo.cbSize = (uint)System.Runtime.InteropServices.Marshal.SizeOf(typeof(WindowManager.MONITORINFO));
 
-                int mx = 0, my = 0, mw = Screen.PrimaryScreen.Bounds.Width, mh = Screen.PrimaryScreen.Bounds.Height;
+                int mx = 0, my = 0, mw = 0, mh = 0;
                 if (WindowManager.GetMonitorInfo(monitor, ref monitorInfo))
                 {
                     mx = monitorInfo.rcMonitor.Left;
@@ -191,8 +193,18 @@ namespace WhipCast
                     mw = monitorInfo.rcMonitor.Right - monitorInfo.rcMonitor.Left;
                     mh = monitorInfo.rcMonitor.Bottom - monitorInfo.rcMonitor.Top;
                 }
+                else if (Screen.PrimaryScreen is Screen primary)
+                {
+                    mw = primary.Bounds.Width;
+                    mh = primary.Bounds.Height;
+                }
 
-                WindowManager.SetWindowPos(viewerHwnd, WindowManager.HWND_TOPMOST, mx, my, mw, mh, WindowManager.SWP_SHOWWINDOW);
+                // With neither a monitor rect nor a primary screen there is no sane size to
+                // use, and resizing to 0x0 would be worse than leaving the window alone.
+                if (mw > 0 && mh > 0)
+                {
+                    WindowManager.SetWindowPos(viewerHwnd, WindowManager.HWND_TOPMOST, mx, my, mw, mh, WindowManager.SWP_SHOWWINDOW);
+                }
             }
             else
             {
@@ -209,7 +221,7 @@ namespace WhipCast
             }
         }
 
-        private void LoopTimer_Tick(object sender, EventArgs e)
+        private void LoopTimer_Tick(object? sender, EventArgs e)
         {
             if (restartRequested)
             {
@@ -305,7 +317,7 @@ namespace WhipCast
             }
         }
 
-        private void GlobalHotkey_HotkeyPressed(object sender, EventArgs e)
+        private void GlobalHotkey_HotkeyPressed(object? sender, EventArgs e)
         {
             isVisible = !isVisible;
             if (overlayForm != null && !overlayForm.IsDisposed)
@@ -319,7 +331,7 @@ namespace WhipCast
             }
         }
 
-        private void ModeHotkey_HotkeyPressed(object sender, EventArgs e)
+        private void ModeHotkey_HotkeyPressed(object? sender, EventArgs e)
         {
             config.ATTACH_TO_WINDOW = !config.ATTACH_TO_WINDOW;
             ConfigManager.Save(config);
@@ -328,7 +340,7 @@ namespace WhipCast
             TriggerRestart(null, null);
         }
 
-        private void TriggerRestart(object sender, EventArgs e)
+        private void TriggerRestart(object? sender, EventArgs? e)
         {
             restartRequested = true;
         }

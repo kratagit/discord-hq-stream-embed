@@ -22,7 +22,7 @@ namespace WhipCast
         private HashSet<Keys> _pressedKeys = new HashSet<Keys>();
         private List<Keys> _targetKeys = new List<Keys>();
 
-        public event EventHandler HotkeyPressed;
+        public event EventHandler? HotkeyPressed;
 
         public GlobalHotkey()
         {
@@ -52,9 +52,11 @@ namespace WhipCast
         private IntPtr SetHook(LowLevelKeyboardProc proc)
         {
             using (Process curProcess = Process.GetCurrentProcess())
-            using (ProcessModule curModule = curProcess.MainModule)
+            using (ProcessModule? curModule = curProcess.MainModule)
             {
-                return SetWindowsHookEx(WH_KEYBOARD_LL, proc, GetModuleHandle(curModule.ModuleName), 0);
+                // A null module name is fine: GetModuleHandle(NULL) returns a handle to
+                // the calling process, which is what a WH_KEYBOARD_LL hook wants anyway.
+                return SetWindowsHookEx(WH_KEYBOARD_LL, proc, GetModuleHandle(curModule?.ModuleName), 0);
             }
         }
 
@@ -113,6 +115,6 @@ namespace WhipCast
         private static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
 
         [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        private static extern IntPtr GetModuleHandle(string lpModuleName);
+        private static extern IntPtr GetModuleHandle(string? lpModuleName);
     }
 }
