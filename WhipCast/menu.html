@@ -303,6 +303,23 @@
         background: #686D73;
     }
 
+    /* Config file actions */
+    .btn-row {
+        display: flex;
+        gap: 5px;
+        margin-bottom: 15px;
+    }
+    .btn-row .btn-secondary {
+        flex: 1;
+        padding: 7px 4px;
+        font-size: 12px;
+        background: #4F545C;
+        min-width: 0;
+    }
+    .btn-row .btn-secondary:hover {
+        background: #686D73;
+    }
+
     /* Message banner */
     #status-msg {
         font-size: 12px;
@@ -412,8 +429,14 @@
         </div>
     </div>
 
+    <label style="display:block; font-size:13px; margin-bottom:5px; color:#B9BBBE; font-weight:600;">Config File</label>
+    <div class="btn-row">
+        <button class="btn-secondary" onclick="copyConfig()" title="Copy config.json to the clipboard">Copy</button>
+        <button class="btn-secondary" onclick="openConfigFolder()" title="Select config.json in File Explorer">Show in Explorer</button>
+    </div>
+
     <div style="flex-grow: 1;"></div>
-    
+
     <button class="btn-primary" onclick="saveAndRestart()">Save and Restart Stream</button>
     <button class="btn-danger" onclick="exitApp()" style="margin-bottom: 10px;">Exit Application</button>
 </div>
@@ -506,6 +529,8 @@
             if (event.data.type === 'LOAD_CONFIG') {
                 currentConfig = event.data.config;
                 populateForm(currentConfig);
+            } else if (event.data.type === 'STATUS_MSG') {
+                showStatus(event.data.text, event.data.isError);
             }
         }
     });
@@ -562,6 +587,16 @@
 
     function exitApp() {
         window.chrome.webview.postMessage({ type: 'EXIT_APP' });
+    }
+
+    // Clipboard and Explorer are handled on the C# side; this page is loaded via
+    // NavigateToString, so it has neither a secure context nor file system access.
+    function copyConfig() {
+        window.chrome.webview.postMessage({ type: 'COPY_CONFIG' });
+    }
+
+    function openConfigFolder() {
+        window.chrome.webview.postMessage({ type: 'OPEN_CONFIG_FOLDER' });
     }
 </script>
 

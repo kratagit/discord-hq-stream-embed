@@ -145,8 +145,20 @@ Messages **HTML → C#** (`window.chrome.webview.postMessage`), handled in
 | `{type:'SAVE_AND_RESTART', config}` | parse → save → restart |
 | `{type:'SAVE_PRESET', presetId, config}` | write one of presets `"1"`/`"2"`/`"3"` |
 | `{type:'LOAD_PRESET', presetId}` | apply preset → save → restart |
+| `{type:'COPY_CONFIG'}` | put the serialized config on the clipboard |
+| `{type:'OPEN_CONFIG_FOLDER'}` | select `config.json` in Explorer |
 | `{type:'EXIT_APP'}` | quit |
 | `'FS_ON'` / `'FS_OFF'` (raw strings, not JSON) | fullscreen enter/leave |
+
+C# → HTML replies are `{type:'LOAD_CONFIG', config}` and `{type:'STATUS_MSG', text,
+isError}`, both delivered on the `window.chrome.webview` message listener. Note the
+page *also* listens on plain `window` for `{type:'STATUS'}` — that one is the stream
+state coming up from the iframe and is unrelated, which is why the C# toast is called
+`STATUS_MSG`.
+
+**Clipboard and Explorer access live in C#, not in the page.** `menu.html` is handed to
+`NavigateToString`, so it is not a secure context: `navigator.clipboard` is unavailable
+and there is no file system access.
 
 Fullscreen is handled differently per mode: standalone borderless-maximizes the form;
 attached mode detaches the owner (`SetWindowLongPtr(GWL_HWNDPARENT, 0)`) and topmosts
